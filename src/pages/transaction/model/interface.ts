@@ -18,6 +18,8 @@ export interface TransactionRecord extends Omit<TransactionRaw, 'date'> {
   isTodo: boolean
 }
 
+export type TransactionID = TransactionRecord['transactionId']
+
 export type AccountType =
   | 'all'
   | 'asset'
