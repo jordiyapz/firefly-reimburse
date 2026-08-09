@@ -9,6 +9,8 @@ import { DataTable } from '../../../components/data-table/DataTable'
 import { ArrowUpDown, Check, ExternalLink, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatIdr } from '@/shared/lib/format-currency'
+import { Switch } from '@/components/ui/switch'
+import TodoSwitch from './TodoSwitch'
 
 dayjs.locale('id')
 dayjs.extend(LocalizedFormat)
@@ -43,18 +45,6 @@ export const columns: ColumnDef<TransactionRecord>[] = [
     accessorKey: 'description',
     header: 'Description',
   },
-  // {
-  //   accessorKey: 'account',
-  //   header: ({ column }) => (
-  //     <Button
-  //       variant="ghost"
-  //       onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-  //     >
-  //       Account
-  //       <ArrowUpDown className="ml-2 h-4 w-4" />
-  //     </Button>
-  //   ),
-  // },
   {
     accessorKey: 'amount',
     header: () => <div className="text-right">Amount</div>,
@@ -72,6 +62,13 @@ export const columns: ColumnDef<TransactionRecord>[] = [
           {amount}
         </div>
       )
+    },
+  },
+  {
+    accessorKey: 'Todo',
+    accessorFn: (row) => row.tags,
+    cell: ({ row }) => {
+      return <TodoSwitch tid={row.getValue('transactionId')} />
     },
   },
   {
@@ -108,7 +105,7 @@ export const columns: ColumnDef<TransactionRecord>[] = [
 ]
 
 type Props = { rows: TransactionRecord[] }
-function TransactionTable({ rows }: Props) {
+function TransactionTable2({ rows }: Props) {
   return <DataTable columns={columns} data={rows} />
 }
-export default TransactionTable
+export default TransactionTable2

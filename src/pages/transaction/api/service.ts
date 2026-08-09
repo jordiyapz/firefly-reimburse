@@ -1,15 +1,11 @@
-import dayjs from 'dayjs'
-import type { AccountType, TransactionRecord } from '../model/interface'
+import type {
+  AccountType,
+  TransactionRaw,
+  TransactionRecord,
+} from '../model/interface'
 
-import result from '@/data/result.json'
 import { fetchFirefly } from '@/shared/lib/fetch-firefly'
-
-const VITE_API_PROXY = import.meta.env.VITE_API_PROXY
-
-function parseAccountName(description: string) {
-  const match = String(description).match(/[-|]\s([\w\s]+)/)
-  return match?.[1] ?? null
-}
+import { mapRawTransactionToRecord } from '../lib/transaction'
 
 export interface GetTransactionByAccountIdOptions {
   start?: string
@@ -22,7 +18,6 @@ export async function getTransactionByAccountId(
 ) {
   if (!token) throw new Error('Token required')
 
-  // const url = new URL(VITE_API_PROXY + `/accounts/${id}/transactions`)
   const url = `/accounts/${id}/transactions`
   const searchParams = new URLSearchParams()
   if (options?.start) searchParams.append('start', options.start)
@@ -37,20 +32,9 @@ export async function getTransactionByAccountId(
         t.attributes.transactions.map((tr: any) => ({
           ...tr,
           transactionId: t.id,
-        })) as any,
+        })) as TransactionRaw,
     )
-    .map(
-      (t: any) =>
-        ({
-          ...t,
-          transactionId: Number(t.transactionId),
-          id: Number(t.transaction_journal_id),
-          amount:
-            t.type === 'withdrawal' ? -Number(t.amount) : Number(t.amount),
-          account: parseAccountName(t.description),
-          date: dayjs(t.date),
-        }) as unknown as TransactionRecord,
-    )
+    .map(mapRawTransactionToRecord)
 
   console.debug(processed)
   return processed
