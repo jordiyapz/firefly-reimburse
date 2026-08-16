@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import type { TransactionRaw, TransactionRecord } from '../model/interface'
 
-const TODO_TAG = 'awaiting-reimbursement'
+const TODO_TAG = 'todo'
 
 export function isTodoTransaction(record: Pick<TransactionRaw, 'tags'>) {
   return record.tags.includes(TODO_TAG)

@@ -6,7 +6,7 @@ import 'dayjs/locale/id'
 import { cn } from '@/lib/utils'
 import type { TransactionRecord } from '../model/interface'
 import { DataTable } from '../../../components/data-table/DataTable'
-import { ArrowUpDown, Check, ExternalLink, Upload } from 'lucide-react'
+import { ArrowUpDown, Check, Download, ExternalLink, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatIdr } from '@/shared/lib/format-currency'
 import { Switch } from '@/components/ui/switch'
@@ -97,6 +97,9 @@ export const columns: ColumnDef<TransactionRecord>[] = [
           </Button>
           <Button variant="ghost" size="icon-sm">
             <Upload />
+          </Button>
+           <Button variant="ghost" size="icon-sm">
+            <Download />
           </Button>
         </div>
       )

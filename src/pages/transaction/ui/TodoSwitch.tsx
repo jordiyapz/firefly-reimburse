@@ -4,8 +4,9 @@ import { useTransactionTodo } from '../model/use-transaction-todo'
 
 type Props = { tid: TransactionID }
 function TodoSwitch({ tid }: Props) {
-  const { isTodo, setTodo, transaction } = useTransactionTodo(tid)
+  const { isTodo, isLoading, setTodo, transaction } = useTransactionTodo(tid)
   if (!transaction) return null
+  if (isLoading) return <p>Loading</p>
   return (
     <Switch
       checked={isTodo}

@@ -9,14 +9,12 @@ export function useTransactionData(accountId: number | null) {
     getTransactionByAccountIdOptions({
       id: accountId,
       token: getToken(),
-      options: { start: '2025-11-16' },
+      options: { start: '2025-11-16', limit: 100 },
     }),
   )
   const data = transactionQuery.data
 
   const initialData = useMemo(() => appendTodoField(data ?? []), [data])
-
-  console.log(initialData)
 
   return initialData
 }
