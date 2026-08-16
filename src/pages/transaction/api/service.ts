@@ -2,6 +2,7 @@ import type {
   AccountType,
   TransactionRaw,
   TransactionRecord,
+  TransactionType,
 } from '../model/interface'
 
 import { fetchFirefly } from '@/shared/lib/fetch-firefly'
@@ -9,6 +10,10 @@ import { mapRawTransactionToRecord } from '../lib/transaction'
 
 export interface GetTransactionByAccountIdOptions {
   start?: string
+  limit?: number
+  page?: number
+  end?: string
+  type?: TransactionType
 }
 
 export async function getTransactionByAccountId(
@@ -19,8 +24,9 @@ export async function getTransactionByAccountId(
   if (!token) throw new Error('Token required')
 
   const url = `/accounts/${id}/transactions`
-  const searchParams = new URLSearchParams()
-  if (options?.start) searchParams.append('start', options.start)
+  const searchParams = new URLSearchParams(
+    Object.entries(options ?? {}).map(([key, val]) => [key, String(val)]),
+  )
 
   const result = await fetchFirefly(`${url}?${searchParams.toString()}`, token)
 
@@ -36,7 +42,6 @@ export async function getTransactionByAccountId(
     )
     .map(mapRawTransactionToRecord)
 
-  console.debug(processed)
   return processed
 }
 

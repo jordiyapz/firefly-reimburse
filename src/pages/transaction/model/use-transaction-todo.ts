@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 export function useTransactionTodo(tid: TransactionID) {
   const token = getToken()
 
-  const { data: transaction } = useQuery({
+  const { data: transaction, ...todoQuery } = useQuery({
     queryKey: ['transactions', tid, 'todo'],
     queryFn: async () => {
       if (!token) return null
@@ -21,18 +21,17 @@ export function useTransactionTodo(tid: TransactionID) {
       )
       return result
     },
-    initialData: null,
     enabled: !!token,
   })
 
-  const { mutate: toggleIsTodo } = useMutation({
+  const { mutate: toggleIsTodo, isPending } = useMutation({
     mutationFn: async (args: {
       transaction: TransactionRecord
       checked: boolean
     }) => {
       if (!token) throw new Error('Token required!')
       if (!transaction) throw new Error('Transaction does not exist')
-      fetchFirefly(`/transactions/${args.transaction.transactionId}`, token, {
+      fetchFirefly(`/transactions/${tid}`, token, {
         method: 'put',
         body: JSON.stringify({
           apply_rules: false,
@@ -46,12 +45,12 @@ export function useTransactionTodo(tid: TransactionID) {
         }),
       })
     },
-    onSuccess(_data, variables, _onMutateResult, context) {
+    onSuccess(_data, args, _onMutateResult, context) {
       context.client.invalidateQueries({
-        queryKey: ['transactions', variables.transaction.transactionId, 'todo'],
+        queryKey: ['transactions', tid, 'todo'],
       })
       toast.success(
-        'Updated todo for transaction #' + variables.transaction.transactionId,
+        'Updated todo for transaction #' + tid + ' as ' + String(args.checked),
       )
     },
   })
@@ -60,5 +59,6 @@ export function useTransactionTodo(tid: TransactionID) {
     setTodo: (transaction: TransactionRecord, value: boolean) =>
       toggleIsTodo({ transaction, checked: value }),
     transaction,
+    isLoading: todoQuery.isLoading || isPending,
   }
 }
