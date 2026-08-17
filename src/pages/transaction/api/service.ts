@@ -1,92 +1,90 @@
-import type {
-  AccountType,
-  TransactionRaw,
-  TransactionRecord,
-  TransactionType,
-} from '../model/interface'
-
-import { fetchFirefly } from '@/shared/lib/fetch-firefly'
+import { AccountsService } from '@billos/firefly-iii-sdk'
 import { mapRawTransactionToRecord } from '../lib/transaction'
+import type {
+  AccountArray,
+  TransactionArray,
+  TransactionSplit,
+} from '@billos/firefly-iii-sdk'
+import type { TransactionRaw, TransactionRecord } from '../model/interface'
+import { getFireflyClient } from '@/shared/lib/fetch-firefly'
 
 export interface GetTransactionByAccountIdOptions {
   start?: string
   limit?: number
   page?: number
   end?: string
-  type?: TransactionType
+  type?: string
 }
 
 export async function getTransactionByAccountId(
   id: number,
   token: string,
   options?: GetTransactionByAccountIdOptions,
-) {
+): Promise<Array<TransactionRecord>> {
   if (!token) throw new Error('Token required')
 
-  const url = `/accounts/${id}/transactions`
-  const searchParams = new URLSearchParams(
-    Object.entries(options ?? {}).map(([key, val]) => [key, String(val)]),
+  const client = getFireflyClient(token)
+
+  const result: TransactionArray =
+    await AccountsService.listTransactionByAccount({
+      path: { id: String(id) },
+      query: {
+        start: options?.start,
+        end: options?.end,
+        page: options?.page,
+        limit: options?.limit,
+      },
+      client,
+    })
+
+  return result.data.flatMap((t) =>
+    t.attributes.transactions.map((tr: TransactionSplit) =>
+      mapRawTransactionToRecord({
+        transactionId: Number(t.id),
+        id: Number(tr.transaction_journal_id),
+        description: tr.description,
+        amount: Number(tr.amount),
+        date: tr.date,
+        has_attachments: tr.has_attachments ?? false,
+        tags: tr.tags ?? [],
+        transaction_journal_id: tr.transaction_journal_id ?? '',
+        type: tr.type.replace(' ', '_') as TransactionRaw['type'],
+      }),
+    ),
   )
-
-  const result = await fetchFirefly(`${url}?${searchParams.toString()}`, token)
-
-  if (!result) return null
-
-  const processed: TransactionRecord[] = result?.data
-    .flatMap(
-      (t: any) =>
-        t.attributes.transactions.map((tr: any) => ({
-          ...tr,
-          transactionId: t.id,
-        })) as TransactionRaw,
-    )
-    .map(mapRawTransactionToRecord)
-
-  return processed
 }
 
 export type ListAccountsOptions = Readonly<
   Partial<{
-    /** default 50 items */
     limit: number
     page: number
-    /** format: YYYY-MM-DD */
     start: string
-    /** format: YYYY-MM-DD */
     end: string
-    /** format: YYYY-MM-DD */
     date: string
-    type: AccountType
+    type: string
   }>
 >
 
-function sanitizeOptions(options: Record<string, string | number>) {
-  return Object.fromEntries(
-    Object.entries(options).map(([key, value]) => [key, String(value)]),
-  )
-}
-
 export async function listAccounts(
   token?: string | null,
-  options: ListAccountsOptions = {},
+  _options: ListAccountsOptions = {},
 ) {
   if (!token) throw new Error('Token required!')
-  const baseUrl = '/accounts'
-  const searchParams = new URLSearchParams(sanitizeOptions(options))
-  const url = baseUrl + '?' + searchParams.toString()
 
-  const res = await fetchFirefly(url, token)
-  const data = res.data.map((r: any) => ({
-    ...r.attributes,
+  const client = getFireflyClient(token)
+
+  const result: AccountArray = await AccountsService.listAccount({
+    query: { type: 'liability' },
+    client,
+  })
+
+  const data = result.data.map((r) => ({
     id: Number(r.id),
+    name: r.attributes.name,
+    type: r.attributes.type,
+    active: r.attributes.active ?? false,
     current_balance: Number(r.attributes.current_balance),
-  })) as Array<{
-    id: number
-    name: string
-    type: string
-    active: boolean
-    current_balance: number
-  }>
+  }))
 
   data.sort((a, b) => a.id - b.id)
 

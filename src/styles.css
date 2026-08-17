@@ -7,86 +7,106 @@
 body {
   @apply m-0;
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    'DM Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    'Oxygen',
+    'Ubuntu',
+    'Cantarell',
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
+code,
+.font-mono {
   font-family:
-    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+    'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', 'DM Sans', sans-serif;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.871 0.006 286.286);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.871 0.006 286.286);
+  --background: #f0f2f5;
+  --foreground: #1a1f2e;
+  --card: #ffffff;
+  --card-foreground: #1a1f2e;
+  --popover: #ffffff;
+  --popover-foreground: #1a1f2e;
+  --primary: #4a90d9;
+  --primary-foreground: #ffffff;
+  --secondary: #e4e7ec;
+  --secondary-foreground: #1a1f2e;
+  --muted: #e4e7ec;
+  --muted-foreground: #6b7280;
+  --accent: #e4e7ec;
+  --accent-foreground: #1a1f2e;
+  --destructive: #d96a6a;
+  --destructive-foreground: #ffffff;
+  --border: #d1d5db;
+  --input: #d1d5db;
+  --ring: #4a90d9;
+  --chart-1: #4a90d9;
+  --chart-2: #5cb88a;
+  --chart-3: #d96a6a;
+  --chart-4: #9b59b6;
+  --chart-5: #e8a838;
+  --radius: 0.5rem;
+  --positive: #3a8a5c;
+  --negative: #d96a6a;
+  --sidebar: #e4e7ec;
+  --sidebar-foreground: #1a1f2e;
+  --sidebar-primary: #4a90d9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d1d5db;
+  --sidebar-accent-foreground: #1a1f2e;
+  --sidebar-border: #d1d5db;
+  --sidebar-ring: #4a90d9;
 }
 
 .dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.141 0.005 285.823);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.141 0.005 285.823);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.274 0.006 286.033);
-  --input: oklch(0.274 0.006 286.033);
-  --ring: oklch(0.442 0.017 285.786);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.274 0.006 286.033);
-  --sidebar-ring: oklch(0.442 0.017 285.786);
+  --background: #0f1219;
+  --foreground: #e8ecf1;
+  --card: #1a1f2e;
+  --card-foreground: #e8ecf1;
+  --popover: #1a1f2e;
+  --popover-foreground: #e8ecf1;
+  --primary: #4a90d9;
+  --primary-foreground: #ffffff;
+  --secondary: #252b3b;
+  --secondary-foreground: #e8ecf1;
+  --muted: #252b3b;
+  --muted-foreground: #8b95a8;
+  --accent: #252b3b;
+  --accent-foreground: #e8ecf1;
+  --destructive: #d96a6a;
+  --destructive-foreground: #ffffff;
+  --border: #2e3548;
+  --input: #2e3548;
+  --ring: #4a90d9;
+  --chart-1: #4a90d9;
+  --chart-2: #5cb88a;
+  --chart-3: #d96a6a;
+  --chart-4: #9b59b6;
+  --chart-5: #e8a838;
+  --positive: #5cb88a;
+  --negative: #d96a6a;
+  --sidebar: #1a1f2e;
+  --sidebar-foreground: #e8ecf1;
+  --sidebar-primary: #4a90d9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #252b3b;
+  --sidebar-accent-foreground: #e8ecf1;
+  --sidebar-border: #2e3548;
+  --sidebar-ring: #4a90d9;
 }
 
 @theme inline {
@@ -114,6 +134,8 @@ code {
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -126,6 +148,9 @@ code {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: 'Space Grotesk', 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'DM Sans', sans-serif;
 }
 
 @layer base {

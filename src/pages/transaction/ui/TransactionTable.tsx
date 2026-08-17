@@ -1,25 +1,31 @@
+import type {ColumnDef} from '@tanstack/react-table';
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
-import dayjs, { type Dayjs } from 'dayjs'
-import { type ColumnDef } from '@tanstack/react-table'
+import dayjs from 'dayjs'
+import type {Dayjs} from 'dayjs';
 import 'dayjs/locale/id'
-
-import { cn } from '@/lib/utils'
-import type { TransactionRecord } from '../model/interface'
+import {
+  ArrowUpDown,
+  Check,
+  Download,
+  ExternalLink,
+  Upload,
+} from 'lucide-react'
 import { DataTable } from '../../../components/data-table/DataTable'
-import { ArrowUpDown, Check, Download, ExternalLink, Upload } from 'lucide-react'
+import type { TransactionRecord } from '../model/interface'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { formatIdr } from '@/shared/lib/format-currency'
 
 dayjs.locale('id')
 dayjs.extend(LocalizedFormat)
 
-export const columns: ColumnDef<TransactionRecord>[] = [
+export const columns: Array<ColumnDef<TransactionRecord>> = [
   { accessorKey: 'transactionId', header: 'TID' },
   {
     accessorKey: 'id',
     header: 'ID',
     cell: ({ row }) => {
-      const id = row.getValue('id') as number
+      const id = row.getValue('id')
       return <p className="font-light">{id}</p>
     },
   },
@@ -35,7 +41,7 @@ export const columns: ColumnDef<TransactionRecord>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const date = row.getValue('date') as Dayjs
+      const date = row.getValue('date')
       return <p className="font-mono">{date.format('DD MMM YYYY')}</p>
     },
   },
@@ -59,7 +65,7 @@ export const columns: ColumnDef<TransactionRecord>[] = [
     accessorKey: 'amount',
     header: () => <div className="text-right">Amount</div>,
     cell: ({ row }) => {
-      const amount = row.getValue('amount') as number
+      const amount = row.getValue('amount')
       return (
         <div
           className={cn(
@@ -68,8 +74,7 @@ export const columns: ColumnDef<TransactionRecord>[] = [
             amount > 0 && 'text-green-700',
           )}
         >
-          {/* {formatIdr(amount)} */}
-          {amount}
+          {formatIdr(amount)}
         </div>
       )
     },
@@ -110,7 +115,9 @@ export const columns: ColumnDef<TransactionRecord>[] = [
   },
 ]
 
-type Props = { rows: TransactionRecord[] }
+type Props = { rows: Array<TransactionRecord> }
+
+/** @deprecated use `TransactionTabel2` instead */
 function TransactionTable({ rows }: Props) {
   return <DataTable columns={columns} data={rows} />
 }

@@ -14,7 +14,7 @@
     "watch-routes": "tsr watch"
   },
   "dependencies": {
-    "@faker-js/faker": "^10.0.0",
+    "@billos/firefly-iii-sdk": "6.5.5-sdk.6",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/match-sorter-utils": "^8.19.4",
     "@tanstack/react-devtools": "^0.7.0",

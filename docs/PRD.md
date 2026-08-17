@@ -16,13 +16,13 @@ Firefly III tracks the transactions but does not natively support a reimbursemen
 
 ## Goals
 
-| # | Goal | Success Criteria |
-|---|------|-----------------|
-| G1 | Track unreimbursed transactions | User can see all transactions and instantly identify which are unreimbursed |
-| G2 | Manage reimbursement periods | User can assign transactions to named, ad-hoc reimbursement periods |
-| G3 | Dashboard visibility | User can see total outstanding, total per period, and account balances at a glance |
-| G4 | CSV export | User can export filtered transaction data for external use |
-| G5 | Clean, reliable codebase | All existing bugs fixed, dead code removed, consistent architecture |
+| #   | Goal                            | Success Criteria                                                                   |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------- |
+| G1  | Track unreimbursed transactions | User can see all transactions and instantly identify which are unreimbursed        |
+| G2  | Manage reimbursement periods    | User can assign transactions to named, ad-hoc reimbursement periods                |
+| G3  | Dashboard visibility            | User can see total outstanding, total per period, and account balances at a glance |
+| G4  | CSV export                      | User can export filtered transaction data for external use                         |
+| G5  | Clean, reliable codebase        | All existing bugs fixed, dead code removed, consistent architecture                |
 
 ## Non-Goals
 
@@ -45,39 +45,40 @@ All data lives in Firefly III. The app is a **read+write frontend** over the Fir
 
 Sourced from Firefly III `GET /accounts?type=liability`. Each account has:
 
-| Field | Type | Source |
-|-------|------|--------|
-| `id` | number | Firefly III |
-| `name` | string | Firefly III |
-| `current_balance` | number | Firefly III |
-| `currency_code` | string | Firefly III |
-| `liability_type` | string | Firefly III |
+| Field                 | Type   | Source      |
+| --------------------- | ------ | ----------- |
+| `id`                  | number | Firefly III |
+| `name`                | string | Firefly III |
+| `current_balance`     | number | Firefly III |
+| `currency_code`       | string | Firefly III |
+| `liability_type`      | string | Firefly III |
 | `liability_direction` | string | Firefly III |
 
 #### Transactions
 
 Sourced from Firefly III `GET /accounts/{id}/transactions`. Each transaction has:
 
-| Field | Type | Source |
-|-------|------|--------|
-| `transactionId` | number | Firefly III |
-| `description` | string | Firefly III |
-| `amount` | number | Firefly III |
-| `date` | string (ISO) | Firefly III |
-| `tags` | string[] | Firefly III |
-| `has_attachments` | boolean | Firefly III |
-| `type` | string | Firefly III |
+| Field             | Type         | Source      |
+| ----------------- | ------------ | ----------- |
+| `transactionId`   | number       | Firefly III |
+| `description`     | string       | Firefly III |
+| `amount`          | number       | Firefly III |
+| `date`            | string (ISO) | Firefly III |
+| `tags`            | string[]     | Firefly III |
+| `has_attachments` | boolean      | Firefly III |
+| `type`            | string       | Firefly III |
 
 #### Reimbursement Tracking via Tags
 
 Reimbursement state is encoded in Firefly III tags on each transaction:
 
-| Tag Pattern | Meaning |
-|-------------|---------|
-| `todo` | Transaction is **not yet reimbursed** — needs action |
+| Tag Pattern                  | Meaning                                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| `todo`                       | Transaction is **not yet reimbursed** — needs action                         |
 | `reimbursed:{{period_name}}` | Transaction was reimbursed in the named period (e.g., `reimbursed:Jan-2025`) |
 
 **Tag lifecycle:**
+
 1. New transaction arrives → no reimbursement tags → treated as "todo" (unreimbursed)
 2. User selects transactions → applies `todo` tag to explicitly mark for review (optional, for visibility)
 3. User creates/assigns a reimbursement period → `reimbursed:{{period_name}}` tag is applied, `todo` tag is removed
@@ -116,15 +117,16 @@ The primary view. A sortable, filterable table showing all transactions for the 
 
 **Columns:**
 
-| Column | Description | Sortable |
-|--------|-------------|----------|
-| Date | Transaction date | Yes |
-| Description | Transaction description | Yes |
-| Amount | Transaction amount (IDR formatted) | Yes |
-| Status | Reimbursement status (todo / reimbursed:period) | Yes |
-| Actions | Toggle todo, assign period | No |
+| Column      | Description                                     | Sortable |
+| ----------- | ----------------------------------------------- | -------- |
+| Date        | Transaction date                                | Yes      |
+| Description | Transaction description                         | Yes      |
+| Amount      | Transaction amount (IDR formatted)              | Yes      |
+| Status      | Reimbursement status (todo / reimbursed:period) | Yes      |
+| Actions     | Toggle todo, assign period                      | No       |
 
 **Behaviors:**
+
 - Sort by any column (default: date descending)
 - Filter by status: All / Todo / Reimbursed
 - Filter by date range
@@ -150,6 +152,7 @@ The primary view. A sortable, filterable table showing all transactions for the 
 - Period names are auto-suggested from existing `reimbursed:*` tags
 
 **Bulk operations:**
+
 - Select multiple rows → "Mark as Reimbursed" → enter period name → apply to all selected
 
 ### F6: Dashboard
@@ -160,12 +163,12 @@ A summary view above or beside the transaction table.
 
 **Widgets:**
 
-| Widget | Data | Source |
-|--------|------|--------|
-| Account Balance | Current balance of selected account | Firefly III account data |
-| Total Unreimbursed | Sum of amounts where `tags` does not contain `reimbursed:*` | Computed from transactions |
-| Reimbursements by Period | Table: period name → total amount, transaction count | Computed from `reimbursed:*` tags |
-| Monthly Spending Trend | Bar chart of spending by month | Computed from transaction dates |
+| Widget                   | Data                                                        | Source                            |
+| ------------------------ | ----------------------------------------------------------- | --------------------------------- |
+| Account Balance          | Current balance of selected account                         | Firefly III account data          |
+| Total Unreimbursed       | Sum of amounts where `tags` does not contain `reimbursed:*` | Computed from transactions        |
+| Reimbursements by Period | Table: period name → total amount, transaction count        | Computed from `reimbursed:*` tags |
+| Monthly Spending Trend   | Bar chart of spending by month                              | Computed from transaction dates   |
 
 ### F7: CSV Export
 
@@ -187,16 +190,16 @@ A summary view above or beside the transaction table.
 
 ### Tech Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Framework | React | 19 |
-| Routing | TanStack Router (file-based) | 1.x |
-| Data Fetching | TanStack Query (React Query) | 5.x |
-| Tables | TanStack Table | 8.x |
-| Styling | Tailwind CSS + shadcn/ui | 4.x |
-| Validation | Zod | 4.x |
-| Build | Vite + TypeScript | 7.x / 5.x |
-| Package Manager | pnpm | - |
+| Layer           | Technology                   | Version   |
+| --------------- | ---------------------------- | --------- |
+| Framework       | React                        | 19        |
+| Routing         | TanStack Router (file-based) | 1.x       |
+| Data Fetching   | TanStack Query (React Query) | 5.x       |
+| Tables          | TanStack Table               | 8.x       |
+| Styling         | Tailwind CSS + shadcn/ui     | 4.x       |
+| Validation      | Zod                          | 4.x       |
+| Build           | Vite + TypeScript            | 7.x / 5.x |
+| Package Manager | pnpm                         | -         |
 
 ### Project Structure
 
@@ -235,20 +238,28 @@ src/
 
 ### API Integration
 
-All API calls go through a Vite dev proxy:
+All API calls use the `@billos/firefly-iii-sdk` package with `createClient`:
 
-```
-/api/* → {VITE_FIREFLY_URL}/api/v1/*
+```typescript
+import { createClient } from '@billos/firefly-iii-sdk/client'
+import { AccountsService, TransactionsService } from '@billos/firefly-iii-sdk'
+
+const client = createClient({
+  baseUrl: `${VITE_FIREFLY_URL}/api/v1`,
+  headers: { Authorization: `Bearer ${token}` },
+  throwOnError: true,
+  responseStyle: 'data',
+})
 ```
 
 **Endpoints used:**
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/accounts?type=liability` | List liability accounts |
-| GET | `/accounts/{id}/transactions` | List transactions for account |
-| GET | `/transactions/{id}` | Get single transaction (for tag read) |
-| PUT | `/transactions/{id}` | Update transaction tags |
+| Method | SDK Service                                                     | Purpose                               |
+| ------ | --------------------------------------------------------------- | ------------------------------------- |
+| GET    | `AccountsService.listAccount({ query: { type: 'liability' } })` | List liability accounts               |
+| GET    | `AccountsService.listTransactionByAccount({ path: { id } })`    | List transactions for account         |
+| GET    | `TransactionsService.getTransaction({ path: { id } })`          | Get single transaction (for tag read) |
+| PUT    | `TransactionsService.updateTransaction({ path: { id }, body })` | Update transaction tags               |
 
 ### State Management
 
@@ -259,32 +270,32 @@ All API calls go through a Vite dev proxy:
 
 ## Known Issues to Fix
 
-| # | Issue | Severity | Fix |
-|---|-------|----------|-----|
-| 1 | `use-transaction-todo.ts` PUT mutation does not `await` the fetch call | High | Add `await` to `fetchFirefly()` |
-| 2 | `fetch-firefly.ts` has no error handling for non-OK responses | High | Check `response.ok`, throw on error |
-| 3 | Hardcoded `start: '2025-11-16'` in `use-transaction-data.ts` | Medium | Make configurable via date range filter |
-| 4 | Hardcoded `limit: 100` with no pagination | Medium | Implement pagination |
-| 5 | `formatIdr()` is commented out in both table components | Low | Re-enable IDR formatting |
-| 6 | `Header` component is disabled in `__root.tsx` | Low | Re-enable or remove |
-| 7 | `TableDemo.tsx` passes `null` accountId, query never fires | Low | Remove or fix |
-| 8 | `use-mobile.ts` hook is unused | Low | Remove or use |
-| 9 | No tests despite vitest being configured | Medium | Add tests for core logic |
-| 10 | Auth navigates without checking setToken success | Low | Navigate inside success callback |
+| #   | Issue                                                                  | Severity | Status                                                           |
+| --- | ---------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- |
+| 1   | `use-transaction-todo.ts` PUT mutation does not `await` the fetch call | High     | Fixed — migrated to SDK with `await`                             |
+| 2   | `fetch-firefly.ts` has no error handling for non-OK responses          | High     | Fixed — migrated to SDK `createClient` with `throwOnError: true` |
+| 3   | Hardcoded `start: '2025-11-16'` in `use-transaction-data.ts`           | Medium   | Fixed — removed hardcoded date                                   |
+| 4   | Hardcoded `limit: 100` with no pagination                              | Medium   | Fixed — removed hardcoded limit (pagination in M2)               |
+| 5   | `formatIdr()` is commented out in both table components                | Low      | Fixed — re-enabled                                               |
+| 6   | `Header` component is disabled in `__root.tsx`                         | Low      | Fixed — removed (referenced deleted demo routes)                 |
+| 7   | `TableDemo.tsx` passes `null` accountId, query never fires             | Low      | Fixed — deleted                                                  |
+| 8   | `use-mobile.ts` hook is unused                                         | Low      | Kept — used by shadcn sidebar component                          |
+| 9   | No tests despite vitest being configured                               | Medium   | Pending — planned for M4                                         |
+| 10  | Auth navigates without checking setToken success                       | Low      | Fixed — navigate inside `onSubmit` callback                      |
 
 ## Data Flow
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Firefly III │────▶│  Vite Proxy  │────▶│  React App  │
-│  (API v1)    │◀────│  /api/*      │◀────│             │
-└─────────────┘     └──────────────┘     └─────────────┘
-                                               │
-                                          ┌────┴────┐
-                                          │  Tags   │
-                                          │  todo   │
-                                          │  reimbursed:* │
-                                          └─────────┘
+┌─────────────┐                    ┌─────────────┐
+│  Firefly III │◀───────────────────│  React App  │
+│  (API v1)    │   SDK (direct)     │             │
+└─────────────┘                    └─────────────┘
+                                         │
+                                    ┌────┴────┐
+                                    │  Tags   │
+                                    │  todo   │
+                                    │  reimbursed:* │
+                                    └─────────┘
 ```
 
 1. App fetches liability accounts → displays in sidebar
@@ -301,13 +312,13 @@ All API calls go through a Vite dev proxy:
 
 ### Milestone 1: Clean Foundation (Week 1)
 
-- [ ] Fix all high-severity bugs (#1, #2)
-- [ ] Remove dead code (demo pages, unused hooks, commented-out code)
-- [ ] Re-enable IDR formatting
-- [ ] Re-enable or remove Header component
-- [ ] Clean up `TableDemo.tsx`
-- [ ] Add proper error handling to API calls
-- [ ] Remove hardcoded dates, add configurable date range
+- [x] Fix all high-severity bugs (#1, #2)
+- [x] Remove dead code (demo pages, unused hooks, commented-out code)
+- [x] Re-enable IDR formatting
+- [x] Re-enable or remove Header component
+- [x] Clean up `TableDemo.tsx`
+- [x] Add proper error handling to API calls (via SDK `throwOnError`)
+- [x] Remove hardcoded dates
 
 ### Milestone 2: Core Reimbursement Workflow (Week 2)
 
@@ -336,9 +347,9 @@ All API calls go through a Vite dev proxy:
 
 ### Tag Naming Convention
 
-| Tag | Purpose | Example |
-|-----|---------|---------|
-| `todo` | Marks transaction as unreimbursed, needs action | `todo` |
+| Tag                     | Purpose                                           | Example               |
+| ----------------------- | ------------------------------------------------- | --------------------- |
+| `todo`                  | Marks transaction as unreimbursed, needs action   | `todo`                |
 | `reimbursed:{{period}}` | Marks transaction as reimbursed in a named period | `reimbursed:Jan-2025` |
 
 Period names are freeform strings. Recommended format: `Mon-YYYY` (e.g., `Jan-2025`) or `Q{n}-YYYY` (e.g., `Q1-2025`), but any string is valid.

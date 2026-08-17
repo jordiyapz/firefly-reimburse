@@ -2,19 +2,28 @@ import Papa from 'papaparse'
 import type { TransactionRecord } from './interface'
 
 const papaUnparseConfig: Papa.UnparseConfig = {
-  quotes: false, //or array of booleans
+  quotes: false, // or array of booleans
   quoteChar: '"',
   escapeChar: '"',
   delimiter: ',',
   header: true,
   newline: '\r\n',
-  skipEmptyLines: false, //other option is 'greedy', meaning skip delimiters, quotes, and whitespace.
-  columns: undefined, //or array of strings
+  skipEmptyLines: false, // other option is 'greedy', meaning skip delimiters, quotes, and whitespace.
+  columns: undefined, // or array of strings
 }
 
-export function exportCsv(transactions: TransactionRecord[]) {
+export function exportCsv(transactions: Array<TransactionRecord>) {
   const payload = transactions.map(
-    ({ id, transactionId, account, description, amount, date, has_attachments, isTodo }) => ({
+    ({
+      id,
+      transactionId,
+      account,
+      description,
+      amount,
+      date,
+      has_attachments,
+      isTodo,
+    }) => ({
       id,
       transactionId,
       account,
@@ -42,11 +51,11 @@ export function downloadCsvBlob(
   contentType = 'text/csv;charset=utf-8;',
 ) {
   // Create a blob
-  var blob = new Blob([content], { type: contentType })
-  var url = URL.createObjectURL(blob)
+  const blob = new Blob([content], { type: contentType })
+  const url = URL.createObjectURL(blob)
 
   // Create a link to download it
-  var pom = document.createElement('a')
+  const pom = document.createElement('a')
   pom.href = url
   pom.setAttribute('download', filename)
   pom.click()
