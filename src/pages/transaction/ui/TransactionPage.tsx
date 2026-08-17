@@ -11,10 +11,10 @@ import { Button } from '@/components/ui/button'
 function HomePage() {
   const [accountId, setAccountId] = useState<number | null>(null)
   const [activeNav, setActiveNav] = useState('transactions')
-  const initialData = useTransactionData(accountId)
+  const transactions = useTransactionData(accountId)
 
-  const outstandingTotal = initialData
-    .filter((row) => !row.isTodo)
+  const outstandingTotal = transactions
+    .filter((row) => row.isTodo)
     .reduce((acc, row) => acc + row.amount, 0)
 
   useEffect(() => {
@@ -56,7 +56,7 @@ function HomePage() {
               size="sm"
               onClick={() =>
                 downloadCsvBlob(
-                  exportCsv(initialData),
+                  exportCsv(transactions),
                   `transactions-account-${accountId}.csv`,
                 )
               }
@@ -69,7 +69,7 @@ function HomePage() {
         <div className="container mx-auto max-w-4xl px-4 py-6">
           {activeNav === 'transactions' && (
             <>
-              {accountId !== null && initialData.length > 0 && (
+              {accountId !== null && transactions.length > 0 && (
                 <div className="mb-6">
                   <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">
                     Outstanding
@@ -78,12 +78,12 @@ function HomePage() {
                     {formatIdr(outstandingTotal)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {initialData.filter((r) => r.isTodo).length} of{' '}
-                    {initialData.length} transactions marked
+                    {transactions.filter((r) => r.isTodo).length} of{' '}
+                    {transactions.length} transactions marked
                   </p>
                 </div>
               )}
-              <TransactionTable2 rows={initialData} />
+              <TransactionTable2 rows={transactions} />
             </>
           )}
           {activeNav === 'reimbursements' && (

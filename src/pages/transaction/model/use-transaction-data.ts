@@ -13,7 +13,6 @@ export function useTransactionData(accountId: number | null) {
     }),
   )
   const data = transactionQuery.data
-  const initialData = useMemo(() => appendTodoField(data ?? []), [data])
-
-  return initialData
+  const transactions = useMemo(() => appendTodoField(data ?? []), [data])
+  return transactions
 }

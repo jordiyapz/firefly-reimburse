@@ -67,7 +67,7 @@ export function useTransactionTodo(tid: TransactionID) {
     },
     onSuccess(_data, args, _onMutateResult, context) {
       context.client.invalidateQueries({
-        queryKey: ['transactions', tid, 'todo'],
+        queryKey: ['transactions'],
       })
       toast.success(
         'Updated todo for transaction #' + tid + ' as ' + String(args.checked),
