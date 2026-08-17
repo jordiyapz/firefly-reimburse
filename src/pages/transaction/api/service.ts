@@ -1,4 +1,5 @@
-import { AccountsService } from '@billos/firefly-iii-sdk'
+import { AccountsService, TransactionsService } from '@billos/firefly-iii-sdk'
+import type { AccountTypeFilter } from '@billos/firefly-iii-sdk'
 import { mapRawTransactionToRecord } from '../lib/transaction'
 import type {
   AccountArray,
@@ -14,6 +15,22 @@ export interface GetTransactionByAccountIdOptions {
   page?: number
   end?: string
   type?: string
+}
+
+function splitToRecord(t: { id: string; attributes: { transactions: TransactionSplit[] } }): TransactionRecord[] {
+  return t.attributes.transactions.map((tr) =>
+    mapRawTransactionToRecord({
+      transactionId: Number(t.id),
+      id: Number(tr.transaction_journal_id),
+      description: tr.description,
+      amount: Number(tr.amount),
+      date: tr.date,
+      has_attachments: tr.has_attachments ?? false,
+      tags: tr.tags ?? [],
+      transaction_journal_id: tr.transaction_journal_id ?? '',
+      type: tr.type.replace(' ', '_') as TransactionRaw['type'],
+    }),
+  )
 }
 
 export async function getTransactionByAccountId(
@@ -37,21 +54,24 @@ export async function getTransactionByAccountId(
       client,
     })
 
-  return result.data.flatMap((t) =>
-    t.attributes.transactions.map((tr: TransactionSplit) =>
-      mapRawTransactionToRecord({
-        transactionId: Number(t.id),
-        id: Number(tr.transaction_journal_id),
-        description: tr.description,
-        amount: Number(tr.amount),
-        date: tr.date,
-        has_attachments: tr.has_attachments ?? false,
-        tags: tr.tags ?? [],
-        transaction_journal_id: tr.transaction_journal_id ?? '',
-        type: tr.type.replace(' ', '_') as TransactionRaw['type'],
-      }),
-    ),
-  )
+  return result.data.flatMap(splitToRecord)
+}
+
+export async function getTransactionById(
+  id: number,
+  token: string,
+): Promise<TransactionRecord | null> {
+  if (!token) throw new Error('Token required')
+
+  const client = getFireflyClient(token)
+
+  const result = await TransactionsService.getTransaction({
+    path: { id: String(id) },
+    client,
+  })
+
+  const records = splitToRecord(result.data)
+  return records[0] ?? null
 }
 
 export type ListAccountsOptions = Readonly<
@@ -61,20 +81,20 @@ export type ListAccountsOptions = Readonly<
     start: string
     end: string
     date: string
-    type: string
+    type: AccountTypeFilter
   }>
 >
 
 export async function listAccounts(
   token?: string | null,
-  _options: ListAccountsOptions = {},
+  options: ListAccountsOptions = {},
 ) {
   if (!token) throw new Error('Token required!')
 
   const client = getFireflyClient(token)
 
   const result: AccountArray = await AccountsService.listAccount({
-    query: { type: 'liability' },
+    query: { type: options.type ?? 'liability' },
     client,
   })
 

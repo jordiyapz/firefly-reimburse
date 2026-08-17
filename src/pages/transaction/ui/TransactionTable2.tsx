@@ -81,7 +81,7 @@ export const columns: Array<ColumnDef<TransactionRecord>> = [
     accessorFn: (row) => row.tags,
     header: () => <span>Todo</span>,
     cell: ({ row }) => {
-      return <TodoSwitch tid={row.original.transactionId} />
+      return <TodoSwitch transaction={row.original} />
     },
     size: 60,
   },

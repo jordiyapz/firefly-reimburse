@@ -1,18 +1,18 @@
-import { useTransactionTodo } from '../model/use-transaction-todo'
-import type { TransactionID } from '../model/interface'
+import { useToggleTodo } from '../model/use-toggle-todo'
+import { useToken } from '@/shared/auth'
+import type { TransactionRecord } from '../model/interface'
 import { Switch } from '@/components/ui/switch'
 
-type Props = { tid: TransactionID }
-function TodoSwitch({ tid }: Props) {
-  const { isTodo, isLoading, setTodo, transaction } = useTransactionTodo(tid)
-  if (!transaction) return null
-  if (isLoading)
-    return <span className="text-xs text-muted-foreground">...</span>
+type Props = { transaction: TransactionRecord }
+function TodoSwitch({ transaction }: Props) {
+  const token = useToken()
+  const { toggleTodo, isPending } = useToggleTodo(token)
   return (
     <Switch
       size="sm"
-      checked={isTodo}
-      onCheckedChange={(checked) => setTodo(transaction, checked)}
+      checked={transaction.isTodo}
+      disabled={isPending}
+      onCheckedChange={(checked) => toggleTodo(transaction, checked)}
     />
   )
 }

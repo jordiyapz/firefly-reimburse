@@ -32,22 +32,36 @@ export function updateTodoTagsImmutable(
     : transaction.tags.filter((tag) => tag !== TODO_TAG)
 }
 
-function parseAccountName(description: string) {
+function parseAccountName(description: string): string | undefined {
   const match = String(description).match(/[-|]\s([\w\s]+)/)
-  return match?.[1] ?? null
+  return match?.[1] ?? undefined
 }
 
-export function mapRawTransactionToRecord(transaction: TransactionRaw) {
+export function mapRawTransactionToRecord(transaction: TransactionRaw): TransactionRecord {
   return {
-    ...transaction,
     transactionId: Number(transaction.transactionId),
     id: Number(transaction.transaction_journal_id),
+    description: transaction.description,
     amount:
       transaction.type === 'withdrawal'
         ? -Number(transaction.amount)
         : Number(transaction.amount),
-    account: parseAccountName(transaction.description),
     date: dayjs(transaction.date),
+    has_attachments: transaction.has_attachments,
+    tags: transaction.tags,
+    transaction_journal_id: transaction.transaction_journal_id,
+    type: transaction.type,
+    account: parseAccountName(transaction.description),
     isTodo: isTodoTransaction(transaction),
-  } as unknown as TransactionRecord
+  }
+}
+
+export function computeOutstandingTotal(transactions: Array<TransactionRecord>) {
+  return transactions
+    .filter((row) => row.isTodo)
+    .reduce((acc, row) => acc + row.amount, 0)
+}
+
+export function countTodoTransactions(transactions: Array<TransactionRecord>) {
+  return transactions.filter((r) => r.isTodo).length
 }

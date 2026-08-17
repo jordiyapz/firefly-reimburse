@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>Architecture review — firefly-reimburse</title>
+    <script src="Architecture%20review%20%E2%80%94%20firefly-reimburse_files/3.4_Nts4.17"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .badge-strong { background: #059669; color: white; }
+      .badge-worth { background: #d97706; color: white; }
+      .badge-speculative { background: #64748b; color: white; }
+      .card { border: 1px solid #e2e8f0; border-radius: 0.75rem; background: white; overflow: hidden; }
+      .card-header { padding: 1.5rem 1.5rem 0; }
+      .card-body { padding: 1.5rem; }
+      .diagram-col { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; min-height: 280px; }
+      .module-box { border: 2px solid #334155; border-radius: 0.375rem; padding: 0.5rem 0.75rem; text-align: center; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+      .module-box-deep { background: #0f172a; color: white; border-color: #0f172a; }
+      .module-box-leak { border-color: #dc2626; background: #fef2f2; }
+      .module-box-shallow { border-color: #94a3b8; background: #f1f5f9; }
+      .module-box-ok { border-color: #334155; background: white; }
+      .arrow { stroke: #334155; stroke-width: 1.5; marker-end: url(#arrowhead); }
+      .arrow-leak { stroke: #dc2626; stroke-width: 2; marker-end: url(#arrowhead-red); }
+      .arrow-seam { stroke: #64748b; stroke-width: 1; stroke-dasharray: 4 4; }
+      .layer-stack { display: flex; flex-direction: column; gap: 0; }
+      .layer { border-left: 4px solid; padding: 0.5rem 0.75rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+      .callout-warn { background: #fffbeb; border-left: 4px solid #d97706; padding: 0.75rem 1rem; border-radius: 0.375rem; font-size: 0.8rem; }
+    </style>
+  <style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:0.25rem}.mb-2{margin-bottom:0.5rem}.mb-3{margin-bottom:0.75rem}.mb-4{margin-bottom:1rem}.mt-1{margin-top:0.25rem}.mt-2{margin-top:0.5rem}.inline-block{display:inline-block}.flex{display:flex}.grid{display:grid}.h-0{height:0px}.h-3{height:0.75rem}.w-3{width:0.75rem}.w-full{width:100%}.max-w-5xl{max-width:64rem}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.items-end{align-items:flex-end}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-4{gap:1rem}.gap-6{gap:1.5rem}.space-y-1 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.25rem * var(--tw-space-y-reverse))}.space-y-12 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(3rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(3rem * var(--tw-space-y-reverse))}.rounded{border-radius:0.25rem}.rounded-full{border-radius:9999px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t-2{border-top-width:2px}.border-dashed{border-style:dashed}.border-amber-400{--tw-border-opacity:1;border-color:rgb(251 191 36 / var(--tw-border-opacity, 1))}.border-emerald-500{--tw-border-opacity:1;border-color:rgb(16 185 129 / var(--tw-border-opacity, 1))}.border-indigo-400{--tw-border-opacity:1;border-color:rgb(129 140 248 / var(--tw-border-opacity, 1))}.border-red-400{--tw-border-opacity:1;border-color:rgb(248 113 113 / var(--tw-border-opacity, 1))}.border-red-600{--tw-border-opacity:1;border-color:rgb(220 38 38 / var(--tw-border-opacity, 1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240 / var(--tw-border-opacity, 1))}.border-slate-300{--tw-border-opacity:1;border-color:rgb(203 213 225 / var(--tw-border-opacity, 1))}.border-slate-400{--tw-border-opacity:1;border-color:rgb(148 163 184 / var(--tw-border-opacity, 1))}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.border-slate-900{--tw-border-opacity:1;border-color:rgb(15 23 42 / var(--tw-border-opacity, 1))}.bg-amber-50{--tw-bg-opacity:1;background-color:rgb(255 251 235 / var(--tw-bg-opacity, 1))}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgb(236 253 245 / var(--tw-bg-opacity, 1))}.bg-indigo-50{--tw-bg-opacity:1;background-color:rgb(238 242 255 / var(--tw-bg-opacity, 1))}.bg-red-50{--tw-bg-opacity:1;background-color:rgb(254 242 242 / var(--tw-bg-opacity, 1))}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249 / var(--tw-bg-opacity, 1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgb(248 250 252 / var(--tw-bg-opacity, 1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-stone-50{--tw-bg-opacity:1;background-color:rgb(250 250 249 / var(--tw-bg-opacity, 1))}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-12{padding-top:3rem;padding-bottom:3rem}.pb-4{padding-bottom:1rem}.text-center{text-align:center}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.font-sans{font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"}.font-serif{font-family:ui-serif, Georgia, Cambria, "Times New Roman", Times, serif}.text-2xl{font-size:1.5rem;line-height:2rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.tracking-tight{letter-spacing:-0.025em}.tracking-wider{letter-spacing:0.05em}.text-amber-700{--tw-text-opacity:1;color:rgb(180 83 9 / var(--tw-text-opacity, 1))}.text-emerald-600{--tw-text-opacity:1;color:rgb(5 150 105 / var(--tw-text-opacity, 1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87 / var(--tw-text-opacity, 1))}.text-indigo-700{--tw-text-opacity:1;color:rgb(67 56 202 / var(--tw-text-opacity, 1))}.text-red-500{--tw-text-opacity:1;color:rgb(239 68 68 / var(--tw-text-opacity, 1))}.text-red-700{--tw-text-opacity:1;color:rgb(185 28 28 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42 / var(--tw-text-opacity, 1))}.line-through{-webkit-text-decoration-line:line-through;text-decoration-line:line-through}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.hover\:text-emerald-700:hover{--tw-text-opacity:1;color:rgb(4 120 87 / var(--tw-text-opacity, 1))}</style></head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <svg style="position:absolute;width:0;height:0">
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#334155"></polygon>
+        </marker>
+        <marker id="arrowhead-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#dc2626"></polygon>
+        </marker>
+      </defs>
+    </svg>
+
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      <header class="flex items-end justify-between border-b border-slate-200 pb-4">
+        <div>
+          <h1 class="text-2xl font-serif font-bold tracking-tight">Architecture review</h1>
+          <p class="text-sm text-slate-500 mt-1">firefly-reimburse · 2026-08-17</p>
+        </div>
+        <div class="flex gap-4 text-xs text-slate-500">
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 border-2 border-slate-700 rounded"></span> module
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-0 border-t-2 border-dashed border-slate-400"></span> seam
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-0 border-t-2 border-red-600"></span> leakage
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 border-2 border-slate-900 bg-slate-900 rounded"></span> deep
+          </span>
+        </div>
+      </header>
+
+      <!-- ============================================================ -->
+      <!-- CANDIDATE 1: Auth token seam -->
+      <!-- ============================================================ -->
+      <article id="candidate-1" class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-lg font-serif font-bold">Centralize the auth token seam</h2>
+            <div class="flex gap-2">
+              <span class="badge-strong text-xs font-semibold px-2 py-0.5 rounded-full">Strong</span>
+              <span class="text-xs text-slate-400 font-mono">in-process</span>
+            </div>
+          </div>
+          <div class="text-xs font-mono text-slate-500 mb-3">
+            shared/auth/index.ts · model/use-transaction-data.ts · 
+model/use-transaction-todo.ts · ui/AccountList.tsx · 
+routes/transactions.tsx
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Problem / Solution / Wins -->
+          <div class="grid grid-cols-3 gap-4 mb-4 text-sm">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Problem</div>
+              <div>getToken() reaches into localStorage from 4+ files. 
+No single module owns the token — every consumer couples directly to the
+ storage mechanism.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Solution</div>
+              <div>Thread the token through a dedicated seam. Two 
+adapters: one reads localStorage (prod), one is injected (tests). 
+Consumers call one interface, never touch storage.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Wins</div>
+              <ul class="space-y-1">
+                <li>locality: token logic in one module</li>
+                <li>leverage: 4+ call sites stop leaking</li>
+                <li>test surface: inject fake token, no localStorage mock</li>
+                <li>interface shrinks; storage detail absorbed</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Before / After diagrams -->
+          <div class="grid grid-cols-2 gap-4">
+            <!-- BEFORE -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Before</div>
+              <svg viewBox="0 0 320 240" class="w-full" style="min-height:220px">
+                <!-- Auth module (thin) -->
+                <rect x="110" y="10" width="100" height="32" rx="4" fill="white" stroke="#94a3b8" stroke-width="2"></rect>
+                <text x="160" y="30" text-anchor="middle" class="text-xs" fill="#475569" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600">auth (localStorage)</text>
+
+                <!-- Consumers -->
+                <rect x="10" y="90" width="80" height="28" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"></rect>
+                <text x="50" y="108" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#991b1b">use-trans-data</text>
+
+                <rect x="120" y="90" width="80" height="28" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"></rect>
+                <text x="160" y="108" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#991b1b">use-trans-todo</text>
+
+                <rect x="230" y="90" width="80" height="28" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"></rect>
+                <text x="270" y="108" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#991b1b">AccountList</text>
+
+                <rect x="70" y="150" width="80" height="28" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"></rect>
+                <text x="110" y="168" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#991b1b">transactions</text>
+
+                <!-- Red arrows = leakage -->
+                <line x1="50" y1="90" x2="130" y2="42" class="arrow-leak"></line>
+                <line x1="160" y1="90" x2="160" y2="42" class="arrow-leak"></line>
+                <line x1="270" y1="90" x2="190" y2="42" class="arrow-leak"></line>
+                <line x1="110" y1="150" x2="130" y2="42" class="arrow-leak"></line>
+
+                <text x="160" y="220" text-anchor="middle" fill="#94a3b8" style="font-size:9px">Each consumer calls getToken() directly</text>
+              </svg>
+            </div>
+            <!-- AFTER -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">After</div>
+              <svg viewBox="0 0 320 240" class="w-full" style="min-height:220px">
+                <!-- Deep auth module -->
+                <rect x="90" y="10" width="140" height="40" rx="6" fill="#0f172a" stroke="#0f172a" stroke-width="2"></rect>
+                <text x="160" y="35" text-anchor="middle" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="white">auth token module</text>
+
+                <!-- Seam line -->
+                <line x1="90" y1="55" x2="230" y2="55" stroke="#64748b" stroke-width="1" stroke-dasharray="4 4"></line>
+
+                <!-- Two adapters inside -->
+                <rect x="100" y="58" width="56" height="24" rx="3" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"></rect>
+                <text x="128" y="73" text-anchor="middle" style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#64748b">localStorage</text>
+
+                <rect x="164" y="58" width="56" height="24" rx="3" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"></rect>
+                <text x="192" y="73" text-anchor="middle" style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#64748b">injected</text>
+
+                <!-- Consumers -->
+                <rect x="10" y="120" width="80" height="28" rx="4" fill="white" stroke="#334155" stroke-width="1.5"></rect>
+                <text x="50" y="138" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">use-trans-data</text>
+
+                <rect x="120" y="120" width="80" height="28" rx="4" fill="white" stroke="#334155" stroke-width="1.5"></rect>
+                <text x="160" y="138" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">use-trans-todo</text>
+
+                <rect x="230" y="120" width="80" height="28" rx="4" fill="white" stroke="#334155" stroke-width="1.5"></rect>
+                <text x="270" y="138" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">AccountList</text>
+
+                <rect x="70" y="170" width="80" height="28" rx="4" fill="white" stroke="#334155" stroke-width="1.5"></rect>
+                <text x="110" y="188" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">transactions</text>
+
+                <!-- Clean arrows -->
+                <line x1="50" y1="120" x2="128" y2="82" class="arrow"></line>
+                <line x1="160" y1="120" x2="160" y2="82" class="arrow"></line>
+                <line x1="270" y1="120" x2="192" y2="82" class="arrow"></line>
+                <line x1="110" y1="170" x2="128" y2="82" class="arrow"></line>
+
+                <text x="160" y="220" text-anchor="middle" fill="#94a3b8" style="font-size:9px">One interface, two adapters behind the seam</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================ -->
+      <!-- CANDIDATE 2: Consolidate fetch+map duplication -->
+      <!-- ============================================================ -->
+      <article id="candidate-2" class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-lg font-serif font-bold">Collapse the duplicated fetch-and-map seam</h2>
+            <div class="flex gap-2">
+              <span class="badge-strong text-xs font-semibold px-2 py-0.5 rounded-full">Strong</span>
+              <span class="text-xs text-slate-400 font-mono">in-process</span>
+            </div>
+          </div>
+          <div class="text-xs font-mono text-slate-500 mb-3">
+            model/use-transaction-todo.ts · api/service.ts · lib/transaction.ts
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-3 gap-4 mb-4 text-sm">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Problem</div>
+              <div>use-transaction-todo bypasses api/service.ts. It 
+manually constructs TransactionRaw from the SDK and calls 
+mapRawTransactionToRecord — the same logic service.ts already owns. Two 
+modules do the same job; bugs hide in the gap.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Solution</div>
+              <div>Merge the fetch+map into api/service.ts as a 
+getTransactionById function. use-transaction-todo calls through the 
+service seam, not around it.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Wins</div>
+              <ul class="space-y-1">
+                <li>locality: mapping logic in one place</li>
+                <li>leverage: service seam handles all fetches</li>
+                <li>test surface: one mock covers both hooks</li>
+                <li>delete the duplicate: ~20 lines removed</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- BEFORE -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Before</div>
+              <svg viewBox="0 0 320 240" class="w-full" style="min-height:220px">
+                <!-- lib/transaction -->
+                <rect x="110" y="10" width="100" height="32" rx="4" fill="white" stroke="#334155" stroke-width="2"></rect>
+                <text x="160" y="30" text-anchor="middle" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">lib/transaction</text>
+
+                <!-- api/service -->
+                <rect x="30" y="80" width="90" height="32" rx="4" fill="white" stroke="#334155" stroke-width="1.5"></rect>
+                <text x="75" y="100" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">api/service</text>
+
+                <!-- use-transaction-todo (leaking) -->
+                <rect x="200" y="80" width="100" height="32" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"></rect>
+                <text x="250" y="94" text-anchor="middle" style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#991b1b">use-trans-todo</text>
+                <text x="250" y="104" text-anchor="middle" style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#991b1b">(bypasses service)</text>
+
+                <!-- SDK -->
+                <rect x="30" y="160" width="90" height="28" rx="4" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"></rect>
+                <text x="75" y="178" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#64748b">SDK (firefly)</text>
+
+                <rect x="200" y="160" width="100" height="28" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1"></rect>
+                <text x="250" y="178" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#991b1b">SDK (direct)</text>
+
+                <!-- Arrows -->
+                <line x1="75" y1="80" x2="130" y2="42" class="arrow"></line>
+                <line x1="250" y1="80" x2="190" y2="42" class="arrow-leak"></line>
+                <line x1="75" y1="112" x2="75" y2="160" class="arrow"></line>
+                <line x1="250" y1="112" x2="250" y2="160" class="arrow-leak"></line>
+
+                <text x="160" y="220" text-anchor="middle" fill="#94a3b8" style="font-size:9px">Duplicate mapping: two paths to same result</text>
+              </svg>
+            </div>
+            <!-- AFTER -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">After</div>
+              <svg viewBox="0 0 320 240" class="w-full" style="min-height:220px">
+                <!-- lib/transaction -->
+                <rect x="110" y="10" width="100" height="32" rx="4" fill="white" stroke="#334155" stroke-width="2"></rect>
+                <text x="160" y="30" text-anchor="middle" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">lib/transaction</text>
+
+                <!-- Deep api/service -->
+                <rect x="90" y="80" width="140" height="48" rx="6" fill="#0f172a" stroke="#0f172a" stroke-width="2"></rect>
+                <text x="160" y="100" text-anchor="middle" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="white">api/service</text>
+                <text x="160" y="116" text-anchor="middle" style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#94a3b8">getByAccountId · getById · listAccounts</text>
+
+                <!-- use-transaction-todo -->
+                <rect x="220" y="160" width="90" height="28" rx="4" fill="white" stroke="#334155" stroke-width="1.5"></rect>
+                <text x="265" y="178" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">use-trans-todo</text>
+
+                <!-- SDK -->
+                <rect x="30" y="160" width="90" height="28" rx="4" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"></rect>
+                <text x="75" y="178" text-anchor="middle" style="font-size:8px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#64748b">SDK (firefly)</text>
+
+                <!-- Arrows -->
+                <line x1="160" y1="42" x2="160" y2="80" class="arrow"></line>
+                <line x1="75" y1="160" x2="120" y2="128" class="arrow"></line>
+                <line x1="265" y1="160" x2="200" y2="128" class="arrow"></line>
+
+                <text x="160" y="220" text-anchor="middle" fill="#94a3b8" style="font-size:9px">One service seam absorbs the duplication</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================ -->
+      <!-- CANDIDATE 3: Move business logic out of TransactionPage -->
+      <!-- ============================================================ -->
+      <article id="candidate-3" class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-lg font-serif font-bold">Extract business logic from the TransactionPage module</h2>
+            <div class="flex gap-2">
+              <span class="badge-worth text-xs font-semibold px-2 py-0.5 rounded-full">Worth exploring</span>
+              <span class="text-xs text-slate-400 font-mono">in-process</span>
+            </div>
+          </div>
+          <div class="text-xs font-mono text-slate-500 mb-3">
+            ui/TransactionPage.tsx · model/interface.ts · lib/transaction.ts
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-3 gap-4 mb-4 text-sm">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Problem</div>
+              <div>TransactionPage computes outstandingTotal inline and 
+reads ff:accountId from raw localStorage. Business logic sits in the UI 
+module where tests can't reach it without rendering the full component 
+tree.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Solution</div>
+              <div>Pull outstandingTotal into a pure selector in 
+lib/transaction.ts. Account selection gets a thin localStorage adapter 
+like usePinnedAccounts. UI stays a rendering shell.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Wins</div>
+              <ul class="space-y-1">
+                <li>locality: business rules live in model</li>
+                <li>test surface: pure function, no render needed</li>
+                <li>leverage: selector reusable by other pages</li>
+                <li>UI module becomes shallow on purpose</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- BEFORE: cross-section -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Before — layers</div>
+              <div class="layer-stack" style="min-height:220px">
+                <div class="layer border-indigo-400 bg-indigo-50" style="height:44px">
+                  <span class="text-indigo-700">TransactionPage — layout</span>
+                </div>
+                <div class="layer border-amber-400 bg-amber-50" style="height:44px">
+                  <span class="text-amber-700">TransactionPage — outstandingTotal</span>
+                </div>
+                <div class="layer border-red-400 bg-red-50" style="height:44px">
+                  <span class="text-red-700">TransactionPage — localStorage ff:accountId</span>
+                </div>
+                <div class="layer border-slate-300 bg-slate-50" style="height:44px">
+                  <span class="text-slate-600">useTransactionData hook</span>
+                </div>
+                <div class="layer border-slate-300 bg-slate-100" style="height:44px">
+                  <span class="text-slate-600">api/service → SDK</span>
+                </div>
+              </div>
+              <div class="text-xs text-slate-400 mt-2 text-center">Layout, business logic, and persistence interleaved in one component</div>
+            </div>
+            <!-- AFTER: cross-section -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">After — layers</div>
+              <div class="layer-stack" style="min-height:220px">
+                <div class="layer border-indigo-400 bg-indigo-50" style="height:44px">
+                  <span class="text-indigo-700">TransactionPage — layout only</span>
+                </div>
+                <div class="layer border-slate-300 bg-slate-50" style="height:44px">
+                  <span class="text-slate-600">useTransactionData hook</span>
+                </div>
+                <div class="layer border-emerald-500 bg-emerald-50" style="height:44px">
+                  <span class="text-emerald-700">lib/transaction — outstandingTotal (pure)</span>
+                </div>
+                <div class="layer border-emerald-500 bg-emerald-50" style="height:44px">
+                  <span class="text-emerald-700">useAccountSelection (localStorage adapter)</span>
+                </div>
+                <div class="layer border-slate-300 bg-slate-100" style="height:44px">
+                  <span class="text-slate-600">api/service → SDK</span>
+                </div>
+              </div>
+              <div class="text-xs text-slate-400 mt-2 text-center">Pure selectors in model; UI renders only</div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================ -->
+      <!-- CANDIDATE 4: Batch N+1 TodoSwitch queries -->
+      <!-- ============================================================ -->
+      <article id="candidate-4" class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-lg font-serif font-bold">Batch the N+1 TodoSwitch queries</h2>
+            <div class="flex gap-2">
+              <span class="badge-worth text-xs font-semibold px-2 py-0.5 rounded-full">Worth exploring</span>
+              <span class="text-xs text-slate-400 font-mono">in-process</span>
+            </div>
+          </div>
+          <div class="text-xs font-mono text-slate-500 mb-3">
+            ui/TransactionTable2.tsx · ui/TodoSwitch.tsx · model/use-transaction-todo.ts
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-3 gap-4 mb-4 text-sm">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Problem</div>
+              <div>Each TodoSwitch renders useTransactionTodo(tid) — one
+ useQuery per row. 100 transactions = 100 parallel API calls on mount. 
+The interface leaks implementation details (per-row queries) into the 
+rendering tree.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Solution</div>
+              <div>Lift the todo state into useTransactionData. The data
+ hook returns transactions with their todo status already resolved. 
+TodoSwitch becomes a pure toggle with no queries of its own.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Wins</div>
+              <ul class="space-y-1">
+                <li>leverage: one query, N consumers</li>
+                <li>locality: todo status co-located with data</li>
+                <li>test surface: toggle tested in isolation</li>
+                <li>interface shrinks; TodoSwitch delegates</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- BEFORE: N+1 -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Before — N queries</div>
+              <svg viewBox="0 0 320 240" class="w-full" style="min-height:220px">
+                <!-- Table -->
+                <rect x="60" y="20" width="200" height="36" rx="4" fill="white" stroke="#334155" stroke-width="2"></rect>
+                <text x="160" y="42" text-anchor="middle" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">TransactionTable2</text>
+
+                <!-- Rows -->
+                <rect x="30" y="80" width="70" height="24" rx="3" fill="white" stroke="#334155" stroke-width="1"></rect>
+                <text x="65" y="96" text-anchor="middle" style="font-size:7px" fill="#334155">Row 1</text>
+
+                <rect x="125" y="80" width="70" height="24" rx="3" fill="white" stroke="#334155" stroke-width="1"></rect>
+                <text x="160" y="96" text-anchor="middle" style="font-size:7px" fill="#334155">Row 2</text>
+
+                <rect x="220" y="80" width="70" height="24" rx="3" fill="white" stroke="#334155" stroke-width="1"></rect>
+                <text x="255" y="96" text-anchor="middle" style="font-size:7px" fill="#334155">Row 3</text>
+
+                <!-- TodoSwitch per row -->
+                <rect x="30" y="130" width="70" height="22" rx="3" fill="#fef2f2" stroke="#dc2626" stroke-width="1"></rect>
+                <text x="65" y="145" text-anchor="middle" style="font-size:6px;text-transform:uppercase" fill="#991b1b">TodoSwitch</text>
+
+                <rect x="125" y="130" width="70" height="22" rx="3" fill="#fef2f2" stroke="#dc2626" stroke-width="1"></rect>
+                <text x="160" y="145" text-anchor="middle" style="font-size:6px;text-transform:uppercase" fill="#991b1b">TodoSwitch</text>
+
+                <rect x="220" y="130" width="70" height="22" rx="3" fill="#fef2f2" stroke="#dc2626" stroke-width="1"></rect>
+                <text x="255" y="145" text-anchor="middle" style="font-size:6px;text-transform:uppercase" fill="#991b1b">TodoSwitch</text>
+
+                <!-- API calls -->
+                <rect x="30" y="180" width="70" height="22" rx="3" fill="#fef2f2" stroke="#dc2626" stroke-width="1"></rect>
+                <text x="65" y="195" text-anchor="middle" style="font-size:6px;text-transform:uppercase" fill="#991b1b">useQuery ×1</text>
+
+                <rect x="125" y="180" width="70" height="22" rx="3" fill="#fef2f2" stroke="#dc2626" stroke-width="1"></rect>
+                <text x="160" y="195" text-anchor="middle" style="font-size:6px;text-transform:uppercase" fill="#991b1b">useQuery ×1</text>
+
+                <rect x="220" y="180" width="70" height="22" rx="3" fill="#fef2f2" stroke="#dc2626" stroke-width="1"></rect>
+                <text x="255" y="195" text-anchor="middle" style="font-size:6px;text-transform:uppercase" fill="#991b1b">useQuery ×1</text>
+
+                <line x1="65" y1="104" x2="65" y2="130" class="arrow-leak"></line>
+                <line x1="160" y1="104" x2="160" y2="130" class="arrow-leak"></line>
+                <line x1="255" y1="104" x2="255" y2="130" class="arrow-leak"></line>
+                <line x1="65" y1="152" x2="65" y2="180" class="arrow-leak"></line>
+                <line x1="160" y1="152" x2="160" y2="180" class="arrow-leak"></line>
+                <line x1="255" y1="152" x2="255" y2="180" class="arrow-leak"></line>
+
+                <text x="160" y="228" text-anchor="middle" fill="#94a3b8" style="font-size:9px">N rows = N API calls on mount</text>
+              </svg>
+            </div>
+            <!-- AFTER: 1 query -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">After — 1 query</div>
+              <svg viewBox="0 0 320 240" class="w-full" style="min-height:220px">
+                <!-- Data hook (deep) -->
+                <rect x="80" y="20" width="160" height="40" rx="6" fill="#0f172a" stroke="#0f172a" stroke-width="2"></rect>
+                <text x="160" y="44" text-anchor="middle" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="white">useTransactionData</text>
+
+                <!-- Table -->
+                <rect x="60" y="90" width="200" height="36" rx="4" fill="white" stroke="#334155" stroke-width="2"></rect>
+                <text x="160" y="112" text-anchor="middle" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600" fill="#334155">TransactionTable2</text>
+
+                <!-- Rows with todo built-in -->
+                <rect x="30" y="150" width="70" height="24" rx="3" fill="white" stroke="#334155" stroke-width="1"></rect>
+                <text x="65" y="166" text-anchor="middle" style="font-size:7px" fill="#334155">Row 1</text>
+
+                <rect x="125" y="150" width="70" height="24" rx="3" fill="white" stroke="#334155" stroke-width="1"></rect>
+                <text x="160" y="166" text-anchor="middle" style="font-size:7px" fill="#334155">Row 2</text>
+
+                <rect x="220" y="150" width="70" height="24" rx="3" fill="white" stroke="#334155" stroke-width="1"></rect>
+                <text x="255" y="166" text-anchor="middle" style="font-size:7px" fill="#334155">Row 3</text>
+
+                <!-- Clean arrows -->
+                <line x1="160" y1="60" x2="160" y2="90" class="arrow"></line>
+                <line x1="65" y1="126" x2="65" y2="150" class="arrow"></line>
+                <line x1="160" y1="126" x2="160" y2="150" class="arrow"></line>
+                <line x1="255" y1="126" x2="255" y2="150" class="arrow"></line>
+
+                <text x="160" y="210" text-anchor="middle" fill="#94a3b8" style="font-size:9px">TodoSwitch is a pure toggle — no queries</text>
+                <text x="160" y="228" text-anchor="middle" fill="#94a3b8" style="font-size:9px">One useQuery, todo status resolved in data hook</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================ -->
+      <!-- CANDIDATE 5: Clean dead code + type safety -->
+      <!-- ============================================================ -->
+      <article id="candidate-5" class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-lg font-serif font-bold">Delete dead modules and fix the type-cast seam</h2>
+            <div class="flex gap-2">
+              <span class="badge-speculative text-xs font-semibold px-2 py-0.5 rounded-full">Speculative</span>
+              <span class="text-xs text-slate-400 font-mono">in-process</span>
+            </div>
+          </div>
+          <div class="text-xs font-mono text-slate-500 mb-3">
+            ui/TransactionTable.tsx · model/interface.ts (AccountType) · lib/transaction.ts:52
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-3 gap-4 mb-4 text-sm">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Problem</div>
+              <div>TransactionTable.tsx is deprecated dead code. 
+AccountType is an unused type. mapRawTransactionToRecord uses a double 
+cast (as unknown as TransactionRecord) to paper over structural 
+mismatches — the interface lies about what it returns.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Solution</div>
+              <div>Delete the dead modules. Fix the return type of 
+mapRawTransactionToRecord so it structurally matches TransactionRecord 
+without the cast. If the Firefly API shape differs, define a separate 
+FireflyTransactionRaw type.</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Wins</div>
+              <ul class="space-y-1">
+                <li>leverage: removing dead code shrinks surface</li>
+                <li>interface becomes honest about its shape</li>
+                <li>type errors surface real bugs at compile time</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- BEFORE: mass diagram -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Before — interface ≈ implementation</div>
+              <div class="flex items-end justify-center gap-6" style="min-height:220px">
+                <!-- Shallow module -->
+                <div class="text-center">
+                  <div style="width:60px; height:120px; border:2px solid #94a3b8; border-radius:4px; background:#f1f5f9; position:relative;">
+                    <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:#e2e8f0;border-top:2px dashed #94a3b8;display:flex;align-items:center;justify-content:center;">
+                      <span style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;color:#64748b">impl</span>
+                    </div>
+                    <div style="position:absolute;top:0;left:0;right:0;height:80px;border-bottom:2px dashed #94a3b8;display:flex;align-items:center;justify-content:center;">
+                      <span style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;color:#475569">iface</span>
+                    </div>
+                  </div>
+                  <div class="text-xs mt-2 text-slate-500">mapRawToRecord</div>
+                  <div class="text-xs text-red-500">double cast</div>
+                </div>
+                <!-- Dead module -->
+                <div class="text-center">
+                  <div style="width:60px; height:120px; border:2px dashed #cbd5e1; border-radius:4px; background:#f8fafc; opacity:0.5;">
+                  </div>
+                  <div class="text-xs mt-2 text-slate-400 line-through">TransactionTable</div>
+                  <div class="text-xs text-slate-400">dead</div>
+                </div>
+                <!-- Dead type -->
+                <div class="text-center">
+                  <div style="width:60px; height:60px; border:2px dashed #cbd5e1; border-radius:4px; background:#f8fafc; opacity:0.5;">
+                  </div>
+                  <div class="text-xs mt-2 text-slate-400 line-through">AccountType</div>
+                  <div class="text-xs text-slate-400">unused</div>
+                </div>
+              </div>
+            </div>
+            <!-- AFTER: honest interface -->
+            <div class="diagram-col">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">After — deep module, honest interface</div>
+              <div class="flex items-end justify-center gap-6" style="min-height:220px">
+                <!-- Deep module -->
+                <div class="text-center">
+                  <div style="width:72px; height:140px; border:2px solid #0f172a; border-radius:6px; background:linear-gradient(135deg, #0f172a, #1e293b); position:relative;">
+                    <div style="position:absolute;bottom:0;left:0;right:0;height:100px;border-top:2px dashed #475569;display:flex;align-items:center;justify-content:center;">
+                      <span style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;color:#94a3b8">impl</span>
+                    </div>
+                    <div style="position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;justify-content:center;">
+                      <span style="font-size:7px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;color:white">iface</span>
+                    </div>
+                  </div>
+                  <div class="text-xs mt-2 text-slate-500 font-semibold">lib/transaction</div>
+                  <div class="text-xs text-emerald-600">no cast, honest types</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================ -->
+      <!-- TOP RECOMMENDATION -->
+      <!-- ============================================================ -->
+      <section id="top-recommendation">
+        <div class="card" style="border-left:4px solid #059669">
+          <div class="card-body">
+            <div class="text-xs uppercase tracking-wider text-emerald-600 mb-1 font-semibold">Top recommendation</div>
+            <h2 class="text-lg font-serif font-bold mb-2">
+              <a href="#candidate-1" class="text-slate-900 hover:text-emerald-700 transition">Centralize the auth token seam</a>
+            </h2>
+            <p class="text-sm text-slate-600">
+              The auth token is the only cross-cutting concern that 
+leaks across every module. It's also the easiest win — a small seam with
+ two adapters (localStorage for prod, injected for tests) eliminates 4+ 
+direct localStorage calls and makes every other module testable without 
+mocking storage. Tackle this first because it unlocks cleaner testing 
+for all subsequent deepening work.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  
+
+</body></html>

@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Download, ReceiptIcon } from 'lucide-react'
 import { useTransactionData } from '../model/use-transaction-data'
 import { downloadCsvBlob, exportCsv } from '../model/export-csv'
+import { computeOutstandingTotal, countTodoTransactions } from '../lib/transaction'
+import { useAccountSelection } from '../model/use-account-selection'
+import { useToken } from '@/shared/auth'
 import AccountListSidebar from './AccountListSidebar'
 import TransactionTable2 from './TransactionTable2'
 import { formatIdr } from '@/shared/lib/format-currency'
@@ -9,38 +12,21 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 
 function HomePage() {
-  const [accountId, setAccountId] = useState<number | null>(null)
+  const token = useToken()
+  const { accountId, selectAccount } = useAccountSelection()
   const [activeNav, setActiveNav] = useState('transactions')
-  const transactions = useTransactionData(accountId)
+  const transactions = useTransactionData(accountId, token)
 
-  const outstandingTotal = transactions
-    .filter((row) => row.isTodo)
-    .reduce((acc, row) => acc + row.amount, 0)
-
-  useEffect(() => {
-    if (accountId !== null) return
-    const acc = Number(localStorage.getItem('ff:accountId'))
-    if (!isNaN(acc)) {
-      setAccountId(acc)
-    }
-  }, [])
-
-  const handleAccountSelect = (id: number) => {
-    setAccountId(id)
-    localStorage.setItem('ff:accountId', '' + id)
-  }
-
-  const handleNavChange = (nav: string) => {
-    setActiveNav(nav)
-  }
+  const outstandingTotal = computeOutstandingTotal(transactions)
+  const todoCount = countTodoTransactions(transactions)
 
   return (
     <SidebarProvider className="flex max-w-full">
       <AccountListSidebar
         selectedAccount={accountId}
-        onSelectAccount={handleAccountSelect}
+        onSelectAccount={selectAccount}
         activeNav={activeNav}
-        onNavChange={handleNavChange}
+        onNavChange={setActiveNav}
       />
       <main className="w-full">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -78,8 +64,7 @@ function HomePage() {
                     {formatIdr(outstandingTotal)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {transactions.filter((r) => r.isTodo).length} of{' '}
-                    {transactions.length} transactions marked
+                    {todoCount} of {transactions.length} transactions marked
                   </p>
                 </div>
               )}

@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { Badge, StarIcon } from 'lucide-react'
+import { StarIcon } from 'lucide-react'
+import { AccountTypeFilter } from '@billos/firefly-iii-sdk'
 import { listAccountsOptions } from '../api/query'
-import { getToken } from '@/shared/auth'
+import { useToken } from '@/shared/auth'
 import { formatIdr } from '@/shared/lib/format-currency'
 import {
   Item,
@@ -89,8 +90,9 @@ function AccountItem({
 }
 
 function AccountList({ accountId, onItemClick, togglePin, isPinned }: Props) {
+  const token = useToken()
   const queryRes = useQuery({
-    ...listAccountsOptions(getToken(), { type: 'liability' }),
+    ...listAccountsOptions(token, { type: AccountTypeFilter.LIABILITY }),
     refetchOnWindowFocus: false,
   })
 
