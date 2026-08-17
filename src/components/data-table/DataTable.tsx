@@ -1,12 +1,13 @@
 import * as React from 'react'
 import {
-  type ColumnDef,
-  type SortingState,
+  
+  
   flexRender,
   getCoreRowModel,
-  useReactTable,
   getSortedRowModel,
+  useReactTable
 } from '@tanstack/react-table'
+import type {ColumnDef, SortingState} from '@tanstack/react-table';
 
 import {
   Table,
@@ -16,10 +17,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { cn } from '@/lib/utils'
 
 interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+  columns: Array<ColumnDef<TData, TValue>>
+  data: Array<TData>
 }
 
 export function DataTable<TData, TValue>({
@@ -41,14 +43,20 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className="rounded-lg border border-border overflow-hidden">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <TableRow
+              key={headerGroup.id}
+              className="border-b border-border hover:bg-transparent"
+            >
               {headerGroup.headers.map((header) => {
                 return (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground h-9"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -63,13 +71,17 @@ export function DataTable<TData, TValue>({
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
+            table.getRowModel().rows.map((row, index) => (
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && 'selected'}
+                className={cn(
+                  'border-b border-border/50 transition-colors',
+                  index % 2 === 0 ? 'bg-transparent' : 'bg-muted/30',
+                )}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className="py-2.5">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
@@ -77,8 +89,11 @@ export function DataTable<TData, TValue>({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-muted-foreground"
+              >
+                No transactions found.
               </TableCell>
             </TableRow>
           )}

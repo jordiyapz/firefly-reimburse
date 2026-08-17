@@ -1,6 +1,6 @@
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { TransactionPage } from '@/pages/transaction'
 import { getToken } from '@/shared/auth'
-import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/transactions')({
   component: TransactionPage,

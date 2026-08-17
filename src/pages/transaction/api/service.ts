@@ -1,11 +1,10 @@
-import {
-  
-  AccountsService
-  
-  
-} from '@billos/firefly-iii-sdk'
+import { AccountsService } from '@billos/firefly-iii-sdk'
 import { mapRawTransactionToRecord } from '../lib/transaction'
-import type {AccountArray, TransactionArray, TransactionSplit} from '@billos/firefly-iii-sdk';
+import type {
+  AccountArray,
+  TransactionArray,
+  TransactionSplit,
+} from '@billos/firefly-iii-sdk'
 import type { TransactionRaw, TransactionRecord } from '../model/interface'
 import { getFireflyClient } from '@/shared/lib/fetch-firefly'
 
@@ -26,16 +25,17 @@ export async function getTransactionByAccountId(
 
   const client = getFireflyClient(token)
 
-  const result: TransactionArray = await AccountsService.listTransactionByAccount({
-    path: { id: String(id) },
-    query: {
-      start: options?.start,
-      end: options?.end,
-      page: options?.page,
-      limit: options?.limit,
-    },
-    client,
-  })
+  const result: TransactionArray =
+    await AccountsService.listTransactionByAccount({
+      path: { id: String(id) },
+      query: {
+        start: options?.start,
+        end: options?.end,
+        page: options?.page,
+        limit: options?.limit,
+      },
+      client,
+    })
 
   return result.data.flatMap((t) =>
     t.attributes.transactions.map((tr: TransactionSplit) =>

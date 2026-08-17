@@ -13,8 +13,6 @@ export function useTransactionData(accountId: number | null) {
     }),
   )
   const data = transactionQuery.data
-  console.debug(data)
-
   const initialData = useMemo(() => appendTodoField(data ?? []), [data])
 
   return initialData

@@ -1,4 +1,4 @@
-import { type Dayjs } from 'dayjs'
+import type {Dayjs} from 'dayjs';
 
 export interface TransactionRaw {
   id: number
@@ -7,7 +7,7 @@ export interface TransactionRaw {
   amount: number
   date: string
   has_attachments: boolean
-  tags: string[]
+  tags: Array<string>
   transaction_journal_id: string
   type: TransactionType
 }

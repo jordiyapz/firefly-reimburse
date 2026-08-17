@@ -1,10 +1,11 @@
 import { queryOptions } from '@tanstack/react-query'
 import {
+  
+  
   getTransactionByAccountId,
-  listAccounts,
-  type GetTransactionByAccountIdOptions,
-  type ListAccountsOptions,
+  listAccounts
 } from './service'
+import type {GetTransactionByAccountIdOptions, ListAccountsOptions} from './service';
 
 export const getTransactionByAccountIdOptions = (args: {
   id: number | null
@@ -24,6 +25,6 @@ export const listAccountsOptions = (
 ) =>
   queryOptions({
     queryKey: ['accounts', 'list', options],
-    queryFn: () => listAccounts(token!, options),
+    queryFn: () => listAccounts(token, options),
     enabled: !!token,
   })

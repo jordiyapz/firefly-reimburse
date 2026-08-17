@@ -40,6 +40,5 @@ if (rootElement && !rootElement.innerHTML) {
         <RouterProvider router={router} />
       </TanStackQueryProvider.Provider>
     </StrictMode>,
-    )
-  }
-
+  )
+}

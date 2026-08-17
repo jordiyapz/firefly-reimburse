@@ -1,49 +1,62 @@
-import { type ColumnDef } from '@tanstack/react-table'
+import type {ColumnDef} from '@tanstack/react-table';
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
-import dayjs, { type Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
+import type {Dayjs} from 'dayjs';
 import 'dayjs/locale/id'
-import { ArrowUpDown, Check, Download, ExternalLink, Upload } from 'lucide-react'
+import {
+  ArrowUpDown,
+  Check,
+  Download,
+  ExternalLink,
+  Upload,
+} from 'lucide-react'
 import { DataTable } from '../../../components/data-table/DataTable'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { formatIdr } from '@/shared/lib/format-currency'
 import TodoSwitch from './TodoSwitch'
 import type { TransactionRecord } from '../model/interface'
+import { formatIdr } from '@/shared/lib/format-currency'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 dayjs.locale('id')
 dayjs.extend(LocalizedFormat)
 
 export const columns: Array<ColumnDef<TransactionRecord>> = [
-  { accessorKey: 'transactionId', header: 'TID' },
   {
-    accessorKey: 'id',
-    header: 'ID',
-    cell: ({ row }) => {
-      const id = row.getValue('id') as number
-      return <p className="font-light">{id}</p>
-    },
-  },
-  {
+    id: 'date',
     accessorKey: 'date',
     header: ({ column }) => (
       <Button
         variant="ghost"
+        size="sm"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        className="h-8 px-2 text-xs font-medium"
       >
         Date
-        <ArrowUpDown className="ml-2 h-4 w-4" />
+        <ArrowUpDown className="ml-1 size-3" />
       </Button>
     ),
     cell: ({ row }) => {
       const date = row.getValue('date') as Dayjs
-      return <p className="font-mono">{date.format('DD MMM YYYY')}</p>
+      return (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+          {date.format('DD MMM YYYY')}
+        </span>
+      )
     },
+    size: 110,
   },
   {
     accessorKey: 'description',
     header: 'Description',
+    cell: ({ row }) => {
+      const desc = row.getValue('description') as string
+      return (
+        <span className="text-sm truncate max-w-[240px] block">{desc}</span>
+      )
+    },
   },
   {
+    id: 'amount',
     accessorKey: 'amount',
     header: () => <div className="text-right">Amount</div>,
     cell: ({ row }) => {
@@ -51,56 +64,63 @@ export const columns: Array<ColumnDef<TransactionRecord>> = [
       return (
         <div
           className={cn(
-            'text-right font-medium',
-            amount < 0 && 'text-red-600',
-            amount > 0 && 'text-green-700',
+            'text-right font-mono text-sm tabular-nums font-medium',
+            amount < 0 && 'text-negative',
+            amount > 0 && 'text-positive',
           )}
         >
           {formatIdr(amount)}
         </div>
       )
     },
+    size: 130,
   },
   {
+    id: 'todo',
     accessorKey: 'Todo',
     accessorFn: (row) => row.tags,
+    header: () => <span>Todo</span>,
     cell: ({ row }) => {
-      return <TodoSwitch tid={row.getValue('transactionId')} />
+      return <TodoSwitch tid={row.original.transactionId} />
     },
+    size: 60,
   },
   {
     accessorKey: 'has_attachments',
-    header: 'Attachments',
+    header: 'File',
     cell: ({ row }) => {
       const has = row.getValue('has_attachments')
       if (!has) return null
-      return <Check />
+      return <Check className="size-4 text-positive" />
     },
+    size: 40,
   },
   {
-    header: 'Action',
+    id: 'actions',
+    header: 'Actions',
     cell: ({ row }) => {
-      const id = row.getValue('transactionId')
+      const id = row.original.transactionId
       return (
-        <div>
-          <Button variant="ghost" size="icon-sm" asChild>
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="icon-xs" asChild>
             <a
               href={`${import.meta.env.VITE_FIREFLY_URL}/transactions/show/${id}`}
               rel="noopener"
               target="_blank"
             >
-              <ExternalLink />
+              <ExternalLink className="size-3.5" />
             </a>
           </Button>
-          <Button variant="ghost" size="icon-sm">
-            <Upload />
+          <Button variant="ghost" size="icon-xs">
+            <Upload className="size-3.5" />
           </Button>
-           <Button variant="ghost" size="icon-sm">
-            <Download />
+          <Button variant="ghost" size="icon-xs">
+            <Download className="size-3.5" />
           </Button>
         </div>
       )
     },
+    size: 90,
   },
 ]
 

@@ -7,7 +7,7 @@ export function isTodoTransaction(record: Pick<TransactionRaw, 'tags'>) {
   return record.tags.includes(TODO_TAG)
 }
 
-export function appendTodoField(data: TransactionRecord[] | null) {
+export function appendTodoField(data: Array<TransactionRecord> | null) {
   const res = data?.map((row) => ({
     ...row,
     isTodo: row.tags ? isTodoTransaction(row) : false,

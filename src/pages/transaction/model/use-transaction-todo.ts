@@ -1,12 +1,16 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import {  TransactionsService } from '@billos/firefly-iii-sdk'
+import { TransactionsService } from '@billos/firefly-iii-sdk'
 import toast from 'react-hot-toast'
 import {
   mapRawTransactionToRecord,
   updateTodoTagsImmutable,
 } from '../lib/transaction'
-import type {TransactionSplit} from '@billos/firefly-iii-sdk';
-import type { TransactionID, TransactionRaw, TransactionRecord } from '../model/interface'
+import type { TransactionSplit } from '@billos/firefly-iii-sdk'
+import type {
+  TransactionID,
+  TransactionRaw,
+  TransactionRecord,
+} from '../model/interface'
 import { getFireflyClient } from '@/shared/lib/fetch-firefly'
 import { getToken } from '@/shared/auth'
 
