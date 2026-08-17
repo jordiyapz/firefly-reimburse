@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
+import { useEffect } from 'react'
 import * as z from 'zod'
 import toast from 'react-hot-toast'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { getToken, setToken } from '@/shared/auth'
-import { useEffect } from 'react'
 
 export const Route = createFileRoute('/auth')({
   component: RouteComponent,
@@ -22,9 +22,10 @@ function RouteComponent() {
     validators: {
       onSubmit: z.object({ token: z.string() }),
     },
-    onSubmit: async ({ value }) => {
+    onSubmit: ({ value }) => {
       setToken(value.token)
       toast.success('Token set!')
+      navigate({ to: '..', from: '/auth' })
     },
   })
 
@@ -42,7 +43,6 @@ function RouteComponent() {
         onSubmit={(e) => {
           e.preventDefault()
           form.handleSubmit()
-          navigate({ to: '..', from: '/auth' })
         }}
       >
         <form.Field

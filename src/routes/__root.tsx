@@ -17,7 +17,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   component: () => (
     <ThemeProvider>
       <TooltipProvider>
-        {/* <Header /> */}
         <Outlet />
       </TooltipProvider>
       <TanStackDevtools

@@ -1,19 +1,18 @@
+import { type ColumnDef } from '@tanstack/react-table'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 import dayjs, { type Dayjs } from 'dayjs'
-import { type ColumnDef } from '@tanstack/react-table'
 import 'dayjs/locale/id'
-
-import { cn } from '@/lib/utils'
-import type { TransactionRecord } from '../model/interface'
-import { DataTable } from '../../../components/data-table/DataTable'
 import { ArrowUpDown, Check, Download, ExternalLink, Upload } from 'lucide-react'
+import { DataTable } from '../../../components/data-table/DataTable'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { formatIdr } from '@/shared/lib/format-currency'
+import type { TransactionRecord } from '../model/interface'
 
 dayjs.locale('id')
 dayjs.extend(LocalizedFormat)
 
-export const columns: ColumnDef<TransactionRecord>[] = [
+export const columns: Array<ColumnDef<TransactionRecord>> = [
   { accessorKey: 'transactionId', header: 'TID' },
   {
     accessorKey: 'id',
@@ -68,8 +67,7 @@ export const columns: ColumnDef<TransactionRecord>[] = [
             amount > 0 && 'text-green-700',
           )}
         >
-          {/* {formatIdr(amount)} */}
-          {amount}
+          {formatIdr(amount)}
         </div>
       )
     },
@@ -110,7 +108,9 @@ export const columns: ColumnDef<TransactionRecord>[] = [
   },
 ]
 
-type Props = { rows: TransactionRecord[] }
+type Props = { rows: Array<TransactionRecord> }
+
+/** @deprecated use `TransactionTabel2` instead */
 function TransactionTable({ rows }: Props) {
   return <DataTable columns={columns} data={rows} />
 }
