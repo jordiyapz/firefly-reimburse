@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -16,9 +16,15 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { collectGroupNames, getPeriodName } from '../lib/transaction'
+import { buildSelectionPatch } from '../lib/selection'
 import { useBatchUpdateTags } from '../model/use-batch-update-tags'
 import TodoSwitch from './TodoSwitch'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import type {
+  ColumnDef,
+  Row,
+  SortingState,
+  Table as TanstackTable,
+} from '@tanstack/react-table'
 import type { TagTransition } from '../lib/transaction'
 import type { TransactionRecord } from '../model/interface'
 import GroupPickerDialog from '@/components/group-picker/GroupPickerDialog'
@@ -51,29 +57,7 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'non-reimbursable', label: 'Excluded' },
 ]
 
-export const columns: Array<ColumnDef<TransactionRecord>> = [
-  {
-    id: 'select',
-    enableSorting: false,
-    size: 36,
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllRowsSelected() ||
-          (table.getIsSomeRowsSelected() && 'indeterminate')
-        }
-        onCheckedChange={(checked) => table.toggleAllRowsSelected(checked === true)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(checked) => row.toggleSelected(checked === true)}
-        aria-label={`Select ${row.original.description}`}
-      />
-    ),
-  },
+const dataColumns: Array<ColumnDef<TransactionRecord>> = [
   {
     id: 'date',
     accessorKey: 'date',
@@ -224,8 +208,70 @@ function TransactionTable2({ rows }: Props) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dialogMode, setDialogMode] = useState<'assign' | 'move' | null>(null)
+  const lastSelectedIdRef = useRef<string | null>(null)
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
-  
+
+  function handleRowCheckboxClick(
+    event: React.MouseEvent<HTMLButtonElement>,
+    row: Row<TransactionRecord>,
+    table: TanstackTable<TransactionRecord>,
+  ) {
+    const anchorId = lastSelectedIdRef.current
+    lastSelectedIdRef.current = row.id
+    const targetState = !row.getIsSelected()
+
+    if (!event.shiftKey || !anchorId) {
+      row.toggleSelected(targetState)
+      return
+    }
+
+    // Shift+click: select the visible range [anchor..clicked] in one patch.
+    // Falls back to a plain toggle if the anchor is not on the current page/filter.
+    const visibleRows = table.getRowModel().rows
+    const patch = buildSelectionPatch(
+      visibleRows.map((r) => r.id),
+      anchorId,
+      row.id,
+      targetState,
+    )
+    if (!patch) {
+      row.toggleSelected(targetState)
+      return
+    }
+    setRowSelection((prev) => ({ ...prev, ...patch }))
+  }
+
+  const columns = useMemo<Array<ColumnDef<TransactionRecord>>>(
+    () => [
+      {
+        id: 'select',
+        enableSorting: false,
+        size: 36,
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllRowsSelected() ||
+              (table.getIsSomeRowsSelected() && 'indeterminate')
+            }
+            onCheckedChange={(checked) =>
+              table.toggleAllRowsSelected(checked === true)
+            }
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row, table }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onClick={(event) => handleRowCheckboxClick(event, row, table)}
+            aria-label={`Select ${row.original.description}`}
+          />
+        ),
+      },
+      ...dataColumns,
+    ],
+    [],
+  )
+
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
     return rows.filter((row) => {
@@ -374,7 +420,7 @@ function TransactionTable2({ rows }: Props) {
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={table.getAllLeafColumns().length}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No transactions found.
