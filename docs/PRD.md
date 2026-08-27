@@ -70,24 +70,32 @@ Sourced from Firefly III `GET /accounts/{id}/transactions`. Each transaction has
 
 #### Reimbursement Tracking via Tags
 
-Reimbursement state is encoded in Firefly III tags on each transaction:
+Reimbursement state is encoded in Firefly III tags on each transaction journal. Presence of the `todo` tag means a transaction is **reimbursable**; its absence means it is **non-reimbursable**.
 
-| Tag Pattern                  | Meaning                                                                      |
-| ---------------------------- | ---------------------------------------------------------------------------- |
-| `todo`                       | Transaction is **not yet reimbursed** — needs action                         |
-| `reimbursed:{{period_name}}` | Transaction was reimbursed in the named period (e.g., `reimbursed:Jan-2025`) |
+| Tag Pattern                  | Meaning                                                        |
+| ---------------------------- | -------------------------------------------------------------- |
+| `todo`                       | Reimbursable and pending assignment (lives in the Todo pool)   |
+| `reimbursed:{{group_name}}`  | Assigned to reimbursement group `{{group_name}}`               |
+| *(no tags)*                  | Non-reimbursable — excluded from outstanding amounts           |
+
+**Status derivation (checked in order):**
+
+1. Any tag starting with `reimbursed:` → **assigned** (a transaction carries **at most one** such tag)
+2. Tag `todo` present → **todo** (Todo pool)
+3. Otherwise → **non-reimbursable**
 
 **Tag lifecycle:**
 
-1. New transaction arrives → no reimbursement tags → treated as "todo" (unreimbursed)
-2. User selects transactions → applies `todo` tag to explicitly mark for review (optional, for visibility)
-3. User creates/assigns a reimbursement period → `reimbursed:{{period_name}}` tag is applied, `todo` tag is removed
+1. New transaction arrives → no tags → non-reimbursable
+2. User marks it reimbursable → `todo` tag applied
+3. User assigns a group → `reimbursed:{{group_name}}` replaces `todo` (the two never coexist)
+4. Unrelated tags (e.g., personal categories) are always preserved through every transition
 
-#### Reimbursement Periods
+#### Reimbursement Groups
 
-Periods are **not a separate entity** — they are derived from the set of unique `reimbursed:*` tags found across all transactions. This keeps the data model simple and fully inside Firefly III.
+Groups are **not a separate entity** — they are derived from the set of unique `reimbursed:*` tags found across the selected account's transactions. This keeps the data model simple and fully inside Firefly III.
 
-A "period" is simply a name (e.g., `Jan-2025`, `Q1-2025`, `ad-hoc-1`) that the user assigns when marking a batch of transactions as reimbursed.
+A "group" is simply a name (e.g., `Jan-2025`, `Q1-2025`, `ad-hoc-1`) that the user assigns when marking a batch of transactions as reimbursed. Every account view partitions its transactions into three buckets: **Todo pool**, **groups**, and **non-reimbursable**.
 
 ## Features
 
@@ -122,38 +130,48 @@ The primary view. A sortable, filterable table showing all transactions for the 
 | Date        | Transaction date                                | Yes      |
 | Description | Transaction description                         | Yes      |
 | Amount      | Transaction amount (IDR formatted)              | Yes      |
-| Status      | Reimbursement status (todo / reimbursed:period) | Yes      |
-| Actions     | Toggle todo, assign period                      | No       |
+| Status      | Badge: Todo / group name / dimmed `—` (non-reimbursable) | Yes    |
+| Select      | Checkbox for bulk operations                    | No       |
+| Actions     | Toggle reimbursable, open in Firefly III        | No       |
 
 **Behaviors:**
 
 - Sort by any column (default: date descending)
-- Filter by status: All / Todo / Reimbursed
+- Filter by status: All / Todo / Assigned / Non-reimbursable
+- Checkbox selection enables the bulk actions bar (assign / move / unassign / exclude)
 - Filter by date range
 - Filter by search term (description)
 - Pagination (50 per page, with load-more or page navigation)
 
-### F4: Todo Toggle
+### F4: Reimbursable Toggle
 
 **Priority: P0 (MVP)**
 
 - Each row has a toggle switch
-- Toggling ON adds the `todo` tag via `PUT /transactions/{id}`
-- Toggling OFF removes the `todo` tag
-- Visual indicator: unreimbursed rows are highlighted or have a distinct badge
+- Toggling ON adds the `todo` tag → transaction enters the Todo pool (counted as outstanding)
+- Toggling OFF removes the `todo` tag → transaction becomes non-reimbursable
+- Disabled while the transaction is assigned to a group (unassign first)
+- Visual indicator: Todo pool rows highlighted with a distinct badge
 
 ### F5: Assign Reimbursement Period
 
 **Priority: P0 (MVP)**
 
-- User can select one or more transactions (checkbox or bulk select)
-- User picks or types a period name (e.g., `Jan-2025`)
-- App applies `reimbursed:{{period_name}}` tag and removes `todo` tag via `PUT /transactions/{id}`
-- Period names are auto-suggested from existing `reimbursed:*` tags
+- One or more transactions selected via row checkboxes (or from any group view)
+- User picks a group name — auto-suggested from existing `reimbursed:*` tags — or types a new one
+- App applies `reimbursed:{{name}}` and removes `todo`; all unrelated tags are preserved
+- A transaction belongs to **exactly one** group: assigning/moving replaces the previous tag
 
-**Bulk operations:**
+**Group operations:**
 
-- Select multiple rows → "Mark as Reimbursed" → enter period name → apply to all selected
+| Operation     | Result                                                                    |
+| ------------- | ------------------------------------------------------------------------- |
+| Assign        | Move into an existing group or create a new one                            |
+| Move          | Replace current `reimbursed:X` with `reimbursed:Y`                         |
+| Unassign      | Remove `reimbursed:X`, restore `todo` → back to the Todo pool              |
+| Mark excluded | Remove `todo` (and any `reimbursed:*`) → transaction becomes non-reimbursable |
+
+**Bulk execution:** Firefly III has no bulk endpoint, so N transactions require N sequential `PUT`s. Updates run **best-effort**: progress indicator (`12/30…`), failures collected and reported at the end (with the failed IDs), and a single cache refetch when done.
 
 ### F6: Dashboard
 
@@ -166,7 +184,7 @@ A summary view above or beside the transaction table.
 | Widget                   | Data                                                        | Source                            |
 | ------------------------ | ----------------------------------------------------------- | --------------------------------- |
 | Account Balance          | Current balance of selected account                         | Firefly III account data          |
-| Total Unreimbursed       | Sum of amounts where `tags` does not contain `reimbursed:*` | Computed from transactions        |
+| Total Unreimbursed       | Sum of amounts tagged `todo` (Todo pool only)               | Computed from transactions        |
 | Reimbursements by Period | Table: period name → total amount, transaction count        | Computed from `reimbursed:*` tags |
 | Monthly Spending Trend   | Bar chart of spending by month                              | Computed from transaction dates   |
 
@@ -185,6 +203,20 @@ A summary view above or beside the transaction table.
 - Filter transactions by start/end date
 - Default: show all transactions (remove hardcoded `2025-11-16` start date)
 - Quick presets: This Month, Last 3 Months, This Year, All Time
+
+### F9: Reimbursements Management Page
+
+**Priority: P0 (Phase 2)**
+
+A dedicated `/reimbursements` route (fills the existing sidebar nav placeholder), scoped to the selected liability account.
+
+**Layout: master–detail**
+
+- Left column: group list — **Todo pool** (count + pending total), then one entry per derived group (count + total), then a collapsible **Non-reimbursable** section
+- Right column: member table of the selected bucket with checkbox multi-select
+- Contextual toolbar: *New reimbursement…*, *Move to…*, *Unassign* (→ Todo pool), *Mark non-reimbursable*
+- "New reimbursement…" dialog offers free-text name with autocomplete from existing groups
+- Both this page and the transaction table expose the same operations via a shared mutation layer
 
 ## Architecture
 
@@ -211,28 +243,38 @@ src/
     index.tsx                       # "/" → redirect
     auth.tsx                        # Token input
     transactions.tsx                # Main transaction view
+    reimbursements.tsx              # Reimbursement groups view
   pages/
     transaction/
       api/
-        service.ts                  # Firefly III API calls
+        service.ts                  # Firefly III API calls (fetch-all-pages loop lives here)
         query.ts                    # TanStack Query option factories
+      lib/
+        transaction.ts              # Pure functions: status derivation, tag transitions, deriveGroups
       model/
         interface.ts                # TypeScript types
-        transaction.ts              # Pure functions (tag logic, mapping)
         use-transaction-data.ts     # Hook: fetch transactions
-        use-transaction-todo.ts     # Hook: toggle todo tag
+        use-toggle-todo.ts          # Hook: reimbursable toggle (single row)
+        use-batch-update-tags.ts    # Hook: sequential best-effort bulk updates
+        use-account-selection.ts    # Hook: shared selected account state
         export-csv.ts               # CSV export
       ui/
         TransactionPage.tsx         # Main page layout
-        TransactionTable.tsx        # Transaction table
-        TodoSwitch.tsx              # Todo toggle component
+        TransactionTable2.tsx       # Transaction table (+ bulk selection)
+        TodoSwitch.tsx              # Reimbursable toggle component
         AccountList.tsx             # Sidebar account list
         AccountListSidebar.tsx      # Sidebar wrapper
+    reimbursements/
+      ui/
+        ReimbursementsPage.tsx      # Master–detail layout
+        GroupList.tsx               # Master column: Todo pool, groups, excluded
+        GroupDetail.tsx             # Detail: member table + bulk toolbar
   shared/
     auth/index.ts                   # Token management
     lib/fetch-firefly.ts            # HTTP client
     lib/format-currency.ts          # IDR formatter
   components/
+    layout/AppShell.tsx             # SidebarProvider + AccountListSidebar shell shared by both routes
     ui/                             # shadcn/ui components
 ```
 
@@ -257,9 +299,9 @@ const client = createClient({
 | Method | SDK Service                                                     | Purpose                               |
 | ------ | --------------------------------------------------------------- | ------------------------------------- |
 | GET    | `AccountsService.listAccount({ query: { type: 'liability' } })` | List liability accounts               |
-| GET    | `AccountsService.listTransactionByAccount({ path: { id } })`    | List transactions for account         |
+| GET    | `AccountsService.listTransactionByAccount({ path: { id } })`    | List ALL transactions for account (loops `?page=N&limit=100` until last page) |
 | GET    | `TransactionsService.getTransaction({ path: { id } })`          | Get single transaction (for tag read) |
-| PUT    | `TransactionsService.updateTransaction({ path: { id }, body })` | Update transaction tags               |
+| PUT    | `TransactionsService.updateTransaction({ path: { id }, body })` | Update tags (journal-scoped via `transaction_journal_id`) |
 
 ### State Management
 
@@ -280,8 +322,9 @@ const client = createClient({
 | 6   | `Header` component is disabled in `__root.tsx`                         | Low      | Fixed — removed (referenced deleted demo routes)                 |
 | 7   | `TableDemo.tsx` passes `null` accountId, query never fires             | Low      | Fixed — deleted                                                  |
 | 8   | `use-mobile.ts` hook is unused                                         | Low      | Kept — used by shadcn sidebar component                          |
-| 9   | No tests despite vitest being configured                               | Medium   | Pending — planned for M4                                         |
+| 9   | No tests despite vitest being configured                               | Medium   | Partial — tag-transition tests landed in Phase 2; rest in M4     |
 | 10  | Auth navigates without checking setToken success                       | Low      | Fixed — navigate inside `onSubmit` callback                      |
+| 11  | Only the FIRST page of transactions fetched — totals silently wrong    | High     | Fixed — Phase 2 fetch-all-pages loop in `service.ts`             |
 
 ## Data Flow
 
@@ -300,13 +343,14 @@ const client = createClient({
 
 1. App fetches liability accounts → displays in sidebar
 2. User selects account → app fetches transactions
-3. App reads `tags` array on each transaction to determine status:
-   - Has `todo` → unreimbursed
-   - Has `reimbursed:*` → reimbursed in that period
-   - Neither → also unreimbursed (implicit todo)
-4. User toggles todo → `PUT` updates tags
-5. User assigns period → `PUT` adds `reimbursed:{{name}}`, removes `todo`
-6. Dashboard computes totals from tag states
+3. All account transactions are fetched across every page before anything is derived
+4. App reads `tags` on each transaction journal to determine status:
+   - Any `reimbursed:*` tag → assigned to that group (at most one exists)
+   - Else has `todo` → Todo pool (reimbursable, pending assignment)
+   - Else → non-reimbursable (excluded from outstanding totals)
+5. Toggle reimbursable → `PUT` adds/removes `todo`
+6. Assign/move/unassign → `PUT` rewrites the single `reimbursed:*` tag and restores/removes `todo` accordingly
+7. Outstanding = sum of `todo`-tagged amounts; per-group totals come from `reimbursed:*` tags
 
 ## Milestones
 
@@ -320,13 +364,17 @@ const client = createClient({
 - [x] Add proper error handling to API calls (via SDK `throwOnError`)
 - [x] Remove hardcoded dates
 
-### Milestone 2: Core Reimbursement Workflow (Week 2)
+### Milestone 2: Core Reimbursement Workflow (Phase 2)
 
-- [ ] Implement period assignment UI (bulk select + period name input)
-- [ ] Auto-suggest existing period names from `reimbursed:*` tags
-- [ ] Implement bulk tag update (batch PUT for multiple transactions)
-- [ ] Add pagination to transaction table
-- [ ] Add status filter (All / Todo / Reimbursed)
+- [x] Fetch-all-pages loop in `getTransactionByAccountId` (fixes #11)
+- [x] Status/tag pure functions (`getStatus`, `getPeriodName`, `buildTransitionTags`, `deriveGroups`, `validatePeriodName`) + unit tests
+- [x] Shared `updateTransactionTags` mutation + `useBatchUpdateTags` (sequential, best-effort, progress, failure report)
+- [x] Extract shared `AppShell` (sidebar + account selection) used by both routes
+- [x] `/reimbursements` route: master–detail (Todo pool, groups, collapsible non-reimbursable)
+- [x] Group detail table with checkbox multi-select + contextual toolbar (assign / move / unassign / exclude)
+- [x] Transactions table: selection column, bulk actions bar, Status column badges
+- [x] Auto-suggest group names from existing `reimbursed:*` tags
+- [x] Client-side pagination (50/page), search filter, status filter (All / Todo / Assigned / Non-reimbursable)
 
 ### Milestone 3: Dashboard (Week 3)
 
@@ -347,12 +395,19 @@ const client = createClient({
 
 ### Tag Naming Convention
 
-| Tag                     | Purpose                                           | Example               |
-| ----------------------- | ------------------------------------------------- | --------------------- |
-| `todo`                  | Marks transaction as unreimbursed, needs action   | `todo`                |
-| `reimbursed:{{period}}` | Marks transaction as reimbursed in a named period | `reimbursed:Jan-2025` |
+| Tag                     | Purpose                                                  | Example               |
+| ----------------------- | -------------------------------------------------------- | --------------------- |
+| `todo`                  | Reimbursable, pending assignment (Todo pool)             | `todo`                |
+| `reimbursed:{{group}}`  | Assigned to reimbursement group `{{group}}`              | `reimbursed:Jan-2025` |
+| *(no tags)*             | Non-reimbursable — excluded from outstanding amounts     | —                     |
 
-Period names are freeform strings. Recommended format: `Mon-YYYY` (e.g., `Jan-2025`) or `Q{n}-YYYY` (e.g., `Q1-2025`), but any string is valid.
+Constraints:
+
+- A transaction carries **at most one** `reimbursed:*` tag (enforced by the app's transition helpers)
+- `todo` and `reimbursed:*` never coexist on the same transaction
+- Unrelated tags (e.g., the user's own categories) are always preserved through every transition
+
+Group names are validated on entry: non-empty, must not contain `:` (would break the prefix parser), must not be the reserved word `todo`. Recommended format: `Mon-YYYY` (e.g., `Jan-2025`) or `Q{n}-YYYY` (e.g., `Q1-2025`), but any valid string works.
 
 ### Firefly III API Reference
 

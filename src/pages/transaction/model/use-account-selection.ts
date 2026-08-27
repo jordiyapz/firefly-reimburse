@@ -1,6 +1,17 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 
 const STORAGE_KEY = 'ff:accountId'
+
+const listeners = new Set<() => void>()
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function emitChange() {
+  listeners.forEach((listener) => listener())
+}
 
 function readAccountId(): number | null {
   const raw = localStorage.getItem(STORAGE_KEY)
@@ -9,17 +20,16 @@ function readAccountId(): number | null {
   return isNaN(acc) ? null : acc
 }
 
-export function useAccountSelection() {
-  const [accountId, setAccountId] = useState<number | null>(null)
+export function selectAccountId(id: number) {
+  localStorage.setItem(STORAGE_KEY, String(id))
+  emitChange()
+}
 
-  useEffect(() => {
-    const stored = readAccountId()
-    if (stored !== null) setAccountId(stored)
-  }, [])
+export function useAccountSelection() {
+  const accountId = useSyncExternalStore(subscribe, readAccountId)
 
   const selectAccount = useCallback((id: number) => {
-    setAccountId(id)
-    localStorage.setItem(STORAGE_KEY, String(id))
+    selectAccountId(id)
   }, [])
 
   return { accountId, selectAccount }

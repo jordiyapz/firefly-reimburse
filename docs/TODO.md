@@ -26,29 +26,44 @@ Derived from [PRD.md](./PRD.md). Checkbox items map to milestones.
 
 > **Note:** `src/hooks/use-mobile.ts` was kept — it's used by `src/components/ui/sidebar.tsx` (shadcn/ui component).
 
-## Milestone 2: Core Reimbursement Workflow
+## Milestone 2: Reimbursement Management (Phase 2)
 
-- [ ] Add status filter to transaction table (All / Todo / Reimbursed)
-- [ ] Add search filter (description text match)
-- [ ] Implement pagination (50 per page)
-- [ ] Build period assignment UI — select rows → enter/pick period name
-- [ ] Auto-suggest existing period names from `reimbursed:*` tags
-- [ ] Implement bulk tag update (batch PUT for multiple transactions)
-- [ ] Add "Assign Period" action to bulk actions bar
-- [ ] Ensure `todo` tag is removed when `reimbursed:*` is applied
-- [ ] Add date range filter with presets (This Month, Last 3 Months, This Year, All Time)
+> Semantics (locked): `todo` = reimbursable & pending · exactly one `reimbursed:X` = in group X · **no tags = non-reimbursable**. The M1 implicit-todo rule is gone; outstanding totals count `todo` rows only.
+
+**Data foundation**
+
+- [x] Fetch-all-pages loop in `getTransactionByAccountId` (`limit=100`, iterate until last page) — fixes silent first-page-only truncation
+- [x] Pure functions in `lib/transaction.ts`: `getStatus`, `getPeriodName`, `buildTransitionTags` (assign/move/unassign/exclude), `deriveGroups`, `validatePeriodName`
+- [x] Unit tests for the full tag-transition matrix (brought forward from M4)
+
+**Mutations**
+
+- [x] Single `updateTransactionTags` SDK mutation (journal-scoped PUT, preserves unrelated tags); refactor `use-toggle-todo.ts` onto it
+- [x] `useBatchUpdateTags` hook — sequential PUTs, progress (`i/n`), collects `{succeeded, failed}`, reports failed IDs, one cache invalidation at the end
+
+**UI**
+
+- [x] Extract `AppShell` (SidebarProvider + AccountListSidebar) shared by `/transactions` and `/reimbursements`; sidebar nav switched from in-page state to router links
+- [x] `/reimbursements` route replacing the nav placeholder — scoped to selected account
+- [x] Master list: Todo pool (count + total) → derived groups (count + total) → collapsible Non-reimbursable section
+- [x] Detail pane: member table with checkbox multi-select + toolbar — New reimbursement… / Move to… / Unassign (→ Todo pool) / Mark non-reimbursable (+ reverse toggle in excluded bucket)
+- [x] Group-name dialog auto-suggests existing `reimbursed:*` tags; validates via `validatePeriodName`
+- [x] Transactions table: checkbox selection column + bulk actions bar (same four ops)
+- [x] Transactions table: Status column badge (Todo / group name / dimmed `—`)
+- [x] Status filter: All / Todo / Assigned / Non-reimbursable
+- [x] Description search filter + client-side pagination (50 per page)
 
 ## Milestone 3: Dashboard
 
 - [ ] Account balance widget (current balance of selected account)
-- [ ] Total unreimbursed amount (sum of amounts without `reimbursed:*` tag)
+- [ ] Total unreimbursed amount (sum of `todo`-tagged amounts only)
 - [ ] Reimbursements by period table (period name → total, count)
 - [ ] Monthly spending bar chart
 
 ## Milestone 4: Polish
 
+- [ ] Date range filter with presets (This Month, Last 3 Months, This Year, All Time)
 - [ ] CSV export respects current filters (status, date range, search)
-- [ ] Unit tests for tag logic (`isTodoTransaction`, `appendTodoField`, `updateTodoTagsImmutable`)
 - [ ] Unit tests for `mapRawTransactionToRecord`
 - [ ] Loading states (skeletons) for transaction table and dashboard
 - [ ] Error boundary for API failures

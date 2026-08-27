@@ -1,4 +1,5 @@
 import type { Dayjs } from 'dayjs'
+import type { TransactionStatus } from '../lib/transaction'
 
 export interface TransactionRaw {
   id: number
@@ -23,7 +24,7 @@ export interface TransactionRecord {
   transaction_journal_id: string
   type: TransactionType
   account?: string
-  isTodo: boolean
+  status: TransactionStatus
 }
 
 export type TransactionID = TransactionRecord['transactionId']

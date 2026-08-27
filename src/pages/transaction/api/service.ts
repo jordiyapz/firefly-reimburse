@@ -1,11 +1,10 @@
 import { AccountsService, TransactionsService } from '@billos/firefly-iii-sdk'
-import type { AccountTypeFilter } from '@billos/firefly-iii-sdk'
 import { mapRawTransactionToRecord } from '../lib/transaction'
-import type {
-  AccountArray,
+import type { AccountArray, AccountTypeFilter,
   TransactionArray,
   TransactionSplit,
-} from '@billos/firefly-iii-sdk'
+  TransactionTypeFilter } from '@billos/firefly-iii-sdk'
+
 import type { TransactionRaw, TransactionRecord } from '../model/interface'
 import { getFireflyClient } from '@/shared/lib/fetch-firefly'
 
@@ -14,10 +13,10 @@ export interface GetTransactionByAccountIdOptions {
   limit?: number
   page?: number
   end?: string
-  type?: string
+  type?: TransactionTypeFilter
 }
 
-function splitToRecord(t: { id: string; attributes: { transactions: TransactionSplit[] } }): TransactionRecord[] {
+function splitToRecord(t: { id: string; attributes: { transactions: Array<TransactionSplit> } }): Array<TransactionRecord> {
   return t.attributes.transactions.map((tr) =>
     mapRawTransactionToRecord({
       transactionId: Number(t.id),
@@ -33,6 +32,8 @@ function splitToRecord(t: { id: string; attributes: { transactions: TransactionS
   )
 }
 
+const PAGE_SIZE = 100
+
 export async function getTransactionByAccountId(
   id: number,
   token: string,
@@ -42,19 +43,33 @@ export async function getTransactionByAccountId(
 
   const client = getFireflyClient(token)
 
-  const result: TransactionArray =
-    await AccountsService.listTransactionByAccount({
+  const recordsById = new Map<number, TransactionRecord>()
+  const startPage = options?.page ?? 1
+  let totalPages = startPage
+  let page = startPage
+  console.debug({totalPages, page})
+  while (page <= totalPages) {
+    const result: TransactionArray = await AccountsService.listTransactionByAccount({
       path: { id: String(id) },
       query: {
         start: options?.start,
         end: options?.end,
-        page: options?.page,
-        limit: options?.limit,
+        type: options?.type,
+        page,
+        limit: options?.limit ?? PAGE_SIZE,
       },
       client,
     })
 
-  return result.data.flatMap(splitToRecord)
+    for (const record of result.data.flatMap(splitToRecord)) {
+      recordsById.set(record.id, record)
+    }
+
+    totalPages = result.meta.pagination?.total_pages ?? page
+    page += 1
+  }
+
+  return [...recordsById.values()]
 }
 
 export async function getTransactionById(

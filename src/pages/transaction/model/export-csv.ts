@@ -22,7 +22,7 @@ export function exportCsv(transactions: Array<TransactionRecord>) {
       amount,
       date,
       has_attachments,
-      isTodo,
+      status,
     }) => ({
       id,
       transactionId,
@@ -31,7 +31,7 @@ export function exportCsv(transactions: Array<TransactionRecord>) {
       amount,
       date,
       has_attachments,
-      isTodo,
+      status,
     }),
   )
   return Papa.unparse(payload, papaUnparseConfig)

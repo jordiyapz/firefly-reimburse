@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { StarIcon } from 'lucide-react'
 import { AccountTypeFilter } from '@billos/firefly-iii-sdk'
 import { listAccountsOptions } from '../api/query'
+import type { usePinnedAccounts } from '../model/use-pinned-accounts'
 import { useToken } from '@/shared/auth'
 import { formatIdr } from '@/shared/lib/format-currency'
 import {
@@ -13,7 +15,6 @@ import {
 } from '@/components/ui/item'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
-import type { usePinnedAccounts } from '../model/use-pinned-accounts'
 
 type AccountRecord = {
   id: number
@@ -96,6 +97,19 @@ function AccountList({ accountId, onItemClick, togglePin, isPinned }: Props) {
     refetchOnWindowFocus: false,
   })
 
+  const accounts = queryRes.data ?? []
+
+  useEffect(() => {
+    if (!onItemClick || accounts.length === 0) return
+    if (accountId !== null && accounts.some((a) => a.id === accountId)) return
+    const favorites = accounts.filter((a) => isPinned(a.id))
+    const others = accounts
+      .filter((a) => !isPinned(a.id) && a.active)
+      .sort((a, b) => a.name.localeCompare(b.name))
+    const fallbackId = favorites.at(0)?.id ?? others.at(0)?.id
+    if (fallbackId !== undefined && fallbackId !== accountId) onItemClick(fallbackId)
+  }, [accounts, accountId, isPinned, onItemClick])
+
   if (queryRes.isLoading) {
     return (
       <div className="flex gap-1 items-center px-5 py-3 text-sm text-muted-foreground">
@@ -104,7 +118,6 @@ function AccountList({ accountId, onItemClick, togglePin, isPinned }: Props) {
     )
   }
 
-  const accounts = queryRes.data ?? []
   const favoriteAccounts = accounts.filter((a) => isPinned(a.id))
   const otherAccounts = accounts.filter((a) => !isPinned(a.id) && a.active).sort((a,b) => a.name.localeCompare(b.name))
 

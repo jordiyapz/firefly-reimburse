@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 
 const STORAGE_KEY = 'ff-reimburse:pinned-accounts'
 
-function readPinned(): number[] {
+function readPinned(): Array<number> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     return raw ? JSON.parse(raw) : []
@@ -11,12 +11,12 @@ function readPinned(): number[] {
   }
 }
 
-function writePinned(ids: number[]) {
+function writePinned(ids: Array<number>) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(ids))
 }
 
 export function usePinnedAccounts() {
-  const [pinned, setPinned] = useState<number[]>(readPinned)
+  const [pinned, setPinned] = useState<Array<number>>(readPinned)
 
   const togglePin = useCallback((id: number) => {
     setPinned((prev) => {

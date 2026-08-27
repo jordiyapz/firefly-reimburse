@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "generate-routes && vite build && tsc",
+    "build": "tsr generate && vite build && tsc",
     "dev": "tsr watch-routes && vite --port 3000",
     "preview": "vite preview",
     "test": "vitest run",
