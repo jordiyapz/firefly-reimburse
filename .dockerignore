@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+.git
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+.vscode
+docs
+count.txt
+.nitro
+.tanstack
+.wrangler
