@@ -13,19 +13,17 @@ COPY . .
 ARG VITE_FIREFLY_URL=""
 RUN pnpm exec tsr generate && pnpm exec vite build && pnpm exec tsc
 
-FROM nginx:alpine
+FROM node:22-alpine
 
-RUN apk add --no-cache gettext
+RUN npm install -g vite
 
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf.template /etc/nginx/nginx.conf.template
-COPY docker-entrypoint.sh /docker-entrypoint.sh
+WORKDIR /app
 
-RUN chmod +x /docker-entrypoint.sh
+COPY --from=build /app/dist ./dist
+COPY vite.preview.config.ts ./vite.config.ts
 
-ENV FIREFLY_URL="https://localhost:8080"
 ENV VITE_FIREFLY_URL=""
 
 EXPOSE 80
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["vite", "preview", "--port", "80", "--host"]

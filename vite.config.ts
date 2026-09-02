@@ -11,6 +11,14 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
 
+  const proxyConfig = {
+    '/api': {
+      target: `${env.VITE_FIREFLY_URL}/api`,
+      changeOrigin: true,
+      rewrite: (path: string) => path.replace(/^\/api/, ''),
+    },
+  }
+
   return {
     plugins: [
       devtools(),
@@ -27,13 +35,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      proxy: {
-        '/api': {
-          target: `${env.VITE_FIREFLY_URL}/api`,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
-        },
-      },
+      proxy: proxyConfig,
+    },
+    preview: {
+      proxy: proxyConfig,
     },
   }
 })
