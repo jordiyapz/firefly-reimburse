@@ -52,6 +52,14 @@ Derived from [PRD.md](./PRD.md). Checkbox items map to milestones.
 - [x] Transactions table: Status column badge (Todo / group name / dimmed `—`)
 - [x] Status filter: All / Todo / Assigned / Non-reimbursable
 - [x] Description search filter + client-side pagination (50 per page)
+- [x] Shift+click range selection on row checkboxes (`lib/selection.ts` `buildSelectionPatch` + tests) — single state patch, graceful fallback when anchor leaves the visible page/filter
+- [x] Bulk bar: "Mark reimbursable (N)" targeting only the non-reimbursable subset of a mixed selection (blind `mark-todo` would unassign group rows)
+
+**Post-Phase fixes**
+
+- [x] `useAccountSelection` rewritten as an external store (`useSyncExternalStore` + listener set + localStorage) — pages consumed account context *above* its provider and permanently saw `accountId: null`
+- [x] Synchronous hydration from localStorage on first render (was async `useEffect`, causing a null flash)
+- [x] Auto-select first visible account (pinned favorites first) when selection is empty or stale, per PRD F2
 
 ## Milestone 3: Dashboard
 

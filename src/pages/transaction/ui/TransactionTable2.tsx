@@ -10,7 +10,6 @@ import dayjs from 'dayjs'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 import {
   ArrowUpDown,
-  Check,
   ChevronLeftIcon,
   ChevronRightIcon,
   ExternalLink,
@@ -26,6 +25,7 @@ import type {
 } from '@tanstack/react-table'
 import type { TagTransition } from '../lib/transaction'
 import type { TransactionRecord } from '../model/interface'
+import AttachmentIcons from '@/pages/attachment/ui/AttachmentIcons'
 import GroupPickerDialog from '@/components/group-picker/GroupPickerDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -147,7 +147,8 @@ const dataColumns: Array<ColumnDef<TransactionRecord>> = [
     size: 120,
   },
   {
-    accessorKey: 'has_attachments',
+    id: 'files',
+    accessorFn: (row) => row.has_attachments,
     header: ({ column }) => (
       <Button
         variant={column.getIsSorted() ? 'outline' : 'ghost'}
@@ -155,16 +156,17 @@ const dataColumns: Array<ColumnDef<TransactionRecord>> = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         className="h-8 px-2 text-xs font-medium ml-auto"
       >
-        Has File
+        Files
         <ArrowUpDown className="ml-1 size-3" />
       </Button>
     ),
-    cell: ({ row }) => {
-      const has = row.original.has_attachments
-      if (!has) return null
-      return <Check className="size-4 text-positive" />
-    },
-    size: 40,
+    cell: ({ row }) => (
+      <AttachmentIcons
+        journalId={row.original.id}
+        hasAttachments={row.original.has_attachments}
+      />
+    ),
+    size: 70,
   },
   // {
   //   id: 'reimbursable',
