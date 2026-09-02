@@ -3,6 +3,7 @@ import type { TransactionRecord } from '../model/interface'
 import { Switch } from '@/components/ui/switch'
 
 type Props = { transaction: TransactionRecord }
+/** @deprecated needs to be removed */
 function TodoSwitch({ transaction }: Props) {
   const { toggleTodo, isPending } = useToggleTodo()
   return (

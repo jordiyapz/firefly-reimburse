@@ -18,7 +18,6 @@ import {
 import { collectGroupNames, getPeriodName } from '../lib/transaction'
 import { buildSelectionPatch } from '../lib/selection'
 import { useBatchUpdateTags } from '../model/use-batch-update-tags'
-import TodoSwitch from './TodoSwitch'
 import type {
   ColumnDef,
   Row,
@@ -167,13 +166,13 @@ const dataColumns: Array<ColumnDef<TransactionRecord>> = [
     },
     size: 40,
   },
-  {
-    id: 'reimbursable',
-    enableSorting: false,
-    header: 'Todo',
-    cell: ({ row }) => <TodoSwitch transaction={row.original} />,
-    size: 60,
-  },
+  // {
+  //   id: 'reimbursable',
+  //   enableSorting: false,
+  //   header: 'Todo',
+  //   cell: ({ row }) => <TodoSwitch transaction={row.original} />,
+  //   size: 60,
+  // },
   {
     id: 'actions',
     header: 'Actions',
@@ -311,9 +310,29 @@ function TransactionTable2({ rows }: Props) {
     selectedTransactions.length > 0 &&
     selectedTransactions.every((tx) => tx.status === 'assigned')
 
+  const excludedSelected = useMemo(
+    () =>
+      selectedTransactions.filter((tx) => tx.status === 'non-reimbursable'),
+    [selectedTransactions],
+  )
+
   async function applyTransition(transition: TagTransition) {
     await runBatchAsync({ transactions: selectedTransactions, transition })
     setRowSelection({})
+  }
+
+  async function markExcludedReimbursable() {
+    // Target only the non-reimbursable rows: mark-todo on an assigned row
+    // would strip its reimbursed:* tag (an implicit unassign).
+    await runBatchAsync({
+      transactions: excludedSelected,
+      transition: { type: 'mark-todo' },
+    })
+    setRowSelection((prev) => {
+      const next = { ...prev }
+      for (const tx of excludedSelected) delete next[String(tx.id)]
+      return next
+    })
   }
 
   return (
@@ -454,6 +473,16 @@ function TransactionTable2({ rows }: Props) {
               onClick={() => applyTransition({ type: 'mark-todo' })}
             >
               Unassign → todo
+            </Button>
+          )}
+          {excludedSelected.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isPending}
+              onClick={markExcludedReimbursable}
+            >
+              Mark reimbursable ({excludedSelected.length})
             </Button>
           )}
           <Button
