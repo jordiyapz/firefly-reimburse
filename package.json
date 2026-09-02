@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "generate-routes && vite build && tsc",
+    "build": "tsr generate && vite build && tsc",
     "dev": "tsr watch-routes && vite --port 3000",
     "preview": "vite preview",
     "test": "vitest run",
@@ -56,5 +56,11 @@
     "vite": "^7.1.7",
     "vitest": "^3.0.5",
     "web-vitals": "^5.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "unrs-resolver"
+    ]
   }
 }

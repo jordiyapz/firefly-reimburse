@@ -1,18 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { getTransactionByAccountIdOptions } from '../api/query'
-import { appendTodoField } from '../lib/transaction'
-import { getToken } from '@/shared/auth'
+import { appendStatusField } from '../lib/transaction'
 
-export function useTransactionData(accountId: number | null) {
+export function useTransactionData(accountId: number | null, token: string | null) {
   const transactionQuery = useQuery(
     getTransactionByAccountIdOptions({
       id: accountId,
-      token: getToken(),
+      token,
       options: {},
     }),
   )
   const data = transactionQuery.data
-  const transactions = useMemo(() => appendTodoField(data ?? []), [data])
+  const transactions = useMemo(() => appendStatusField(data ?? []), [data])
   return transactions
 }
