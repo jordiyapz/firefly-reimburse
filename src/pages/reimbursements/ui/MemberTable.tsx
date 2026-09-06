@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { flexRender, stockFeatures, useTable } from '@tanstack/react-table'
+import {
+  createColumnHelper,
+  createSortedRowModel,
+  flexRender,
+  stockFeatures,
+  tableFeatures,
+  useTable,
+} from '@tanstack/react-table'
 import dayjs from 'dayjs'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 import 'dayjs/locale/id'
@@ -7,13 +14,7 @@ import { ArrowUpDown, ExternalLink } from 'lucide-react'
 import SelectionToolbar from './SelectionToolbar'
 import type { DialogMode } from './SelectionToolbar'
 import type { BucketKey } from './ReimbursementsPage'
-import type {
-  Column,
-  ColumnDef,
-  RowSelectionState,
-  SortingState,
-  StockFeatures,
-} from '@tanstack/react-table'
+import type { Column, StockFeatures } from '@tanstack/react-table'
 import type { TransactionRecord } from '@/pages/transaction/model/interface'
 import type { TagTransition } from '@/pages/transaction/lib/transaction'
 import { getGroupNameFromTags } from '@/pages/transaction/lib/transaction'
@@ -72,7 +73,11 @@ function SortableHeader({
   )
 }
 
-const columns: Array<ColumnDef<StockFeatures, TransactionRecord>> = [
+const columnHelper = createColumnHelper<
+  typeof stockFeatures,
+  TransactionRecord
+>()
+const defaultColumns = columnHelper.columns([
   {
     id: 'select',
     enableSorting: false,
@@ -155,6 +160,8 @@ const columns: Array<ColumnDef<StockFeatures, TransactionRecord>> = [
       />
     ),
     size: 70,
+    sortFn: (a, b) =>
+      Number(a.original.has_attachments) - Number(b.original.has_attachments),
   },
   {
     id: 'actions',
@@ -173,7 +180,12 @@ const columns: Array<ColumnDef<StockFeatures, TransactionRecord>> = [
     ),
     size: 60,
   },
-]
+])
+
+const features = tableFeatures({
+  ...stockFeatures,
+  sortedRowModel: createSortedRowModel(), // if using client-side sorting
+})
 
 function MemberTable({
   rows,
@@ -186,19 +198,16 @@ function MemberTable({
   onBulkAction,
   onDownload,
 }: Props) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'date', desc: true },
-  ])
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
 
   const table = useTable({
     data: rows,
-    columns,
-    features: stockFeatures,
+    columns: defaultColumns,
+    features,
     getRowId: (row) => String(row.id),
-    state: { sorting },
-    onSortingChange: setSorting,
+    initialState: { sorting: [{ id: 'date', desc: true }] },
     enableRowSelection: true,
+    enableRowPinning: true,
   })
 
   useEffect(() => {
