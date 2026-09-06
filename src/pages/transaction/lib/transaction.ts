@@ -20,6 +20,13 @@ export function getPeriodName(tags: Array<string>): string | null {
   return tag ? tag.slice(REIMBURSED_PREFIX.length) : null
 }
 
+export function getGroupNameFromTags(
+  tags: Array<string> | undefined,
+  fallback = 'attachments',
+): string {
+  return getPeriodName(tags ?? []) ?? fallback
+}
+
 export function getStatus(tags: Array<string>): TransactionStatus {
   if (getPeriodName(tags) !== null) return 'assigned'
   if (isTodoTransaction({ tags })) return 'todo'
@@ -36,7 +43,8 @@ export function validatePeriodName(name: string): string | null {
   const trimmed = name.trim()
   if (trimmed.length === 0) return 'Name must not be empty'
   if (trimmed.includes(':')) return "Name must not contain ':'"
-  if (RESERVED_GROUP_NAMES.includes(trimmed)) return `"${trimmed}" is a reserved name`
+  if (RESERVED_GROUP_NAMES.includes(trimmed))
+    return `"${trimmed}" is a reserved name`
   return null
 }
 
@@ -50,7 +58,9 @@ export function buildTransitionTags(
 ): Array<string> {
   const current = normalizeTags(transaction.tags)
   const withoutTodo = current.filter((tag) => tag !== TODO_TAG)
-  const foreign = withoutTodo.filter((tag) => !tag.startsWith(REIMBURSED_PREFIX))
+  const foreign = withoutTodo.filter(
+    (tag) => !tag.startsWith(REIMBURSED_PREFIX),
+  )
 
   switch (transition.type) {
     case 'mark-todo':
@@ -77,7 +87,9 @@ export interface DerivedBuckets {
   nonReimbursable: Array<TransactionRecord>
 }
 
-export function deriveGroups(transactions: Array<TransactionRecord>): DerivedBuckets {
+export function deriveGroups(
+  transactions: Array<TransactionRecord>,
+): DerivedBuckets {
   const pool: Array<TransactionRecord> = []
   const nonReimbursable: Array<TransactionRecord> = []
   const groupMap = new Map<string, Array<TransactionRecord>>()
@@ -111,7 +123,9 @@ export function deriveGroups(transactions: Array<TransactionRecord>): DerivedBuc
   return { pool, groups, nonReimbursable }
 }
 
-export function collectGroupNames(transactions: Array<TransactionRecord>): Array<string> {
+export function collectGroupNames(
+  transactions: Array<TransactionRecord>,
+): Array<string> {
   return transactions
     .map((tx) => getPeriodName(tx.tags))
     .filter((name): name is string => name !== null)
@@ -138,7 +152,9 @@ function parseAccountName(description: string): string | undefined {
   return match?.[1] ?? undefined
 }
 
-export function mapRawTransactionToRecord(transaction: TransactionRaw): TransactionRecord {
+export function mapRawTransactionToRecord(
+  transaction: TransactionRaw,
+): TransactionRecord {
   return {
     transactionId: Number(transaction.transactionId),
     id: Number(transaction.transaction_journal_id),
@@ -157,7 +173,9 @@ export function mapRawTransactionToRecord(transaction: TransactionRaw): Transact
   }
 }
 
-export function computeOutstandingTotal(transactions: Array<TransactionRecord>) {
+export function computeOutstandingTotal(
+  transactions: Array<TransactionRecord>,
+) {
   return transactions
     .filter((row) => row.status === 'todo')
     .reduce((acc, row) => acc + row.amount, 0)

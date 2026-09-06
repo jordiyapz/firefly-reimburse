@@ -4,7 +4,10 @@ import {
   getTransactionById,
   listAccounts,
 } from './service'
-import type { GetTransactionByAccountIdOptions, ListAccountsOptions } from './service'
+import type {
+  GetTransactionByAccountIdOptions,
+  ListAccountsOptions,
+} from './service'
 
 export const getTransactionByAccountIdOptions = (args: {
   id: number | null

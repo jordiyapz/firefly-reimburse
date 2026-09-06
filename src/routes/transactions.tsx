@@ -6,7 +6,9 @@ import { getToken } from '@/shared/auth'
 
 const transactionSearchSchema = z.object({
   q: z.string().default(''),
-  status: z.enum(['all', 'todo', 'assigned', 'non-reimbursable']).default('all'),
+  status: z
+    .enum(['all', 'todo', 'assigned', 'non-reimbursable'])
+    .default('all'),
   from: z.string().default(dayjs().subtract(3, 'month').format('YYYY-MM-DD')),
   to: z.string().default(dayjs().format('YYYY-MM-DD')),
   sort: z.string().default('date,desc'),

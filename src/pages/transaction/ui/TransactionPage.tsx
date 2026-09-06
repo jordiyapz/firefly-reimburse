@@ -1,9 +1,12 @@
 import { Download } from 'lucide-react'
 import { useTransactionData } from '../model/use-transaction-data'
 import { downloadCsvBlob, exportCsv } from '../model/export-csv'
-import { computeOutstandingTotal, countTodoTransactions } from '../lib/transaction'
+import {
+  computeOutstandingTotal,
+  countTodoTransactions,
+} from '../lib/transaction'
 import TransactionTable2 from './TransactionTable2'
-import { AppShell, useSelectedAccount  } from '@/components/layout/AppShell'
+import { AppShell, useSelectedAccount } from '@/components/layout/AppShell'
 import { useToken } from '@/shared/auth'
 import { formatIdr } from '@/shared/lib/format-currency'
 import { Button } from '@/components/ui/button'

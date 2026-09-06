@@ -4,6 +4,6 @@ services:
     image: jordiyapz/firefly-reimburse:${APP_VERSION:-latest}
     container_name: firefly-reimburse
     ports:
-      - "3000:80"
+      - '3000:80'
     env_file: .env
     restart: unless-stopped

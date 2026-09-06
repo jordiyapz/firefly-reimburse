@@ -1,9 +1,12 @@
 import { AccountsService, TransactionsService } from '@billos/firefly-iii-sdk'
 import { mapRawTransactionToRecord } from '../lib/transaction'
-import type { AccountArray, AccountTypeFilter,
+import type {
+  AccountArray,
+  AccountTypeFilter,
   TransactionArray,
   TransactionSplit,
-  TransactionTypeFilter } from '@billos/firefly-iii-sdk'
+  TransactionTypeFilter,
+} from '@billos/firefly-iii-sdk'
 
 import type { TransactionRaw, TransactionRecord } from '../model/interface'
 import { getFireflyClient } from '@/shared/lib/fetch-firefly'
@@ -16,7 +19,10 @@ export interface GetTransactionByAccountIdOptions {
   type?: TransactionTypeFilter
 }
 
-function splitToRecord(t: { id: string; attributes: { transactions: Array<TransactionSplit> } }): Array<TransactionRecord> {
+function splitToRecord(t: {
+  id: string
+  attributes: { transactions: Array<TransactionSplit> }
+}): Array<TransactionRecord> {
   return t.attributes.transactions.map((tr) =>
     mapRawTransactionToRecord({
       transactionId: Number(t.id),
@@ -47,19 +53,19 @@ export async function getTransactionByAccountId(
   const startPage = options?.page ?? 1
   let totalPages = startPage
   let page = startPage
-  console.debug({totalPages, page})
   while (page <= totalPages) {
-    const result: TransactionArray = await AccountsService.listTransactionByAccount({
-      path: { id: String(id) },
-      query: {
-        start: options?.start,
-        end: options?.end,
-        type: options?.type,
-        page,
-        limit: options?.limit ?? PAGE_SIZE,
-      },
-      client,
-    })
+    const result: TransactionArray =
+      await AccountsService.listTransactionByAccount({
+        path: { id: String(id) },
+        query: {
+          start: options?.start,
+          end: options?.end,
+          type: options?.type,
+          page,
+          limit: options?.limit ?? PAGE_SIZE,
+        },
+        client,
+      })
 
     for (const record of result.data.flatMap(splitToRecord)) {
       recordsById.set(record.id, record)

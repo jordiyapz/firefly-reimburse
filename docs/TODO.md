@@ -57,7 +57,7 @@ Derived from [PRD.md](./PRD.md). Checkbox items map to milestones.
 
 **Post-Phase fixes**
 
-- [x] `useAccountSelection` rewritten as an external store (`useSyncExternalStore` + listener set + localStorage) — pages consumed account context *above* its provider and permanently saw `accountId: null`
+- [x] `useAccountSelection` rewritten as an external store (`useSyncExternalStore` + listener set + localStorage) — pages consumed account context _above_ its provider and permanently saw `accountId: null`
 - [x] Synchronous hydration from localStorage on first render (was async `useEffect`, causing a null flash)
 - [x] Auto-select first visible account (pinned favorites first) when selection is empty or stale, per PRD F2
 

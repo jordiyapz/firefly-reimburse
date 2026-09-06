@@ -1,4 +1,9 @@
-import { ChevronDownIcon, FolderIcon, ListChecksIcon, SlashSquareIcon } from 'lucide-react'
+import {
+  ChevronDownIcon,
+  FolderIcon,
+  ListChecksIcon,
+  SlashSquareIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import type { DerivedBuckets } from '@/pages/transaction/lib/transaction'
 import type { BucketKey } from './ReimbursementsPage'
@@ -50,7 +55,12 @@ function Row({
   )
 }
 
-function GroupList({ buckets, activeBucket, onSelect, outstandingTotal }: Props) {
+function GroupList({
+  buckets,
+  activeBucket,
+  onSelect,
+  outstandingTotal,
+}: Props) {
   const [showNonReimbursable, setShowNonReimbursable] = useState(false)
 
   return (
@@ -78,7 +88,10 @@ function GroupList({ buckets, activeBucket, onSelect, outstandingTotal }: Props)
           {buckets.groups.map((group) => (
             <Row
               key={group.name}
-              active={isSameBucket(activeBucket, { kind: 'group', name: group.name })}
+              active={isSameBucket(activeBucket, {
+                kind: 'group',
+                name: group.name,
+              })}
               onClick={() => onSelect({ kind: 'group', name: group.name })}
               icon={<FolderIcon className="size-4 shrink-0" />}
               label={group.name}
@@ -111,7 +124,9 @@ function GroupList({ buckets, activeBucket, onSelect, outstandingTotal }: Props)
             meta={`${buckets.nonReimbursable.length}`}
           />
         ) : (
-          <p className="px-3 py-1 text-xs text-muted-foreground">Nothing excluded</p>
+          <p className="px-3 py-1 text-xs text-muted-foreground">
+            Nothing excluded
+          </p>
         ))}
     </div>
   )

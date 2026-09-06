@@ -19,9 +19,10 @@ export interface BatchResult {
 
 export function useBatchUpdateTags() {
   const token = useToken()
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(
-    null,
-  )
+  const [progress, setProgress] = useState<{
+    done: number
+    total: number
+  } | null>(null)
 
   const mutation = useMutation({
     mutationFn: async (args: BatchUpdateArgs): Promise<BatchResult> => {

@@ -119,9 +119,7 @@ const dataColumns: Array<ColumnDef<typeof features, TransactionRecord>> = [
     ),
     cell: ({ row }) => {
       const desc = row.original.description
-      return (
-        <span className="text-sm truncate max-w-60 block">{desc}</span>
-      )
+      return <span className="text-sm truncate max-w-60 block">{desc}</span>
     },
   },
   {
@@ -230,7 +228,14 @@ function TransactionTable2({ rows }: Props) {
   const lastSelectedIdRef = useRef<string | null>(null)
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
   const navigate = useNavigate({ from: '/transactions' })
-  const { q: search, status: statusFilter, from: dateFrom, to: dateTo, sort, page } = useSearch({ from: '/transactions' })
+  const {
+    q: search,
+    status: statusFilter,
+    from: dateFrom,
+    to: dateTo,
+    sort,
+    page,
+  } = useSearch({ from: '/transactions' })
 
   const updateSearch = useCallback(
     (patch: Partial<TransactionSearch>) => {
@@ -248,7 +253,8 @@ function TransactionTable2({ rows }: Props) {
 
   const setSorting = useCallback(
     (updater: SortingState | ((old: SortingState) => SortingState)) => {
-      const newSorting = typeof updater === 'function' ? updater(sorting) : updater
+      const newSorting =
+        typeof updater === 'function' ? updater(sorting) : updater
       if (newSorting.length === 0) {
         updateSearch({ sort: '' })
       } else {
@@ -259,14 +265,20 @@ function TransactionTable2({ rows }: Props) {
     [sorting, updateSearch],
   )
 
-  const pagination: PaginationState = useMemo(() => ({
-    pageIndex: page || 0,
-    pageSize: PAGE_SIZE,
-  }), [page])
+  const pagination: PaginationState = useMemo(
+    () => ({
+      pageIndex: page || 0,
+      pageSize: PAGE_SIZE,
+    }),
+    [page],
+  )
 
   const setPagination = useCallback(
-    (updater: PaginationState | ((old: PaginationState) => PaginationState)) => {
-      const newPagination = typeof updater === 'function' ? updater(pagination) : updater
+    (
+      updater: PaginationState | ((old: PaginationState) => PaginationState),
+    ) => {
+      const newPagination =
+        typeof updater === 'function' ? updater(pagination) : updater
       updateSearch({ page: newPagination.pageIndex })
     },
     [pagination, updateSearch],
@@ -374,8 +386,7 @@ function TransactionTable2({ rows }: Props) {
     selectedTransactions.every((tx) => tx.status === 'assigned')
 
   const excludedSelected = useMemo(
-    () =>
-      selectedTransactions.filter((tx) => tx.status === 'non-reimbursable'),
+    () => selectedTransactions.filter((tx) => tx.status === 'non-reimbursable'),
     [selectedTransactions],
   )
 
@@ -509,7 +520,10 @@ function TransactionTable2({ rows }: Props) {
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="py-2.5">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -539,7 +553,9 @@ function TransactionTable2({ rows }: Props) {
           <Button
             size="sm"
             disabled={isPending}
-            onClick={() => setDialogMode(allSelectedAssigned ? 'move' : 'assign')}
+            onClick={() =>
+              setDialogMode(allSelectedAssigned ? 'move' : 'assign')
+            }
           >
             {allSelectedAssigned ? 'Move to…' : 'New reimbursement…'}
           </Button>
@@ -591,7 +607,9 @@ function TransactionTable2({ rows }: Props) {
           count={selectedTransactions.length}
           existingGroups={existingGroups}
           onOpenChange={(open) => !open && setDialogMode(null)}
-          onSubmit={(groupName) => applyTransition({ type: 'assign', groupName })}
+          onSubmit={(groupName) =>
+            applyTransition({ type: 'assign', groupName })
+          }
         />
       )}
     </div>

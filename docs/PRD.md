@@ -72,11 +72,11 @@ Sourced from Firefly III `GET /accounts/{id}/transactions`. Each transaction has
 
 Reimbursement state is encoded in Firefly III tags on each transaction journal. Presence of the `todo` tag means a transaction is **reimbursable**; its absence means it is **non-reimbursable**.
 
-| Tag Pattern                  | Meaning                                                        |
-| ---------------------------- | -------------------------------------------------------------- |
-| `todo`                       | Reimbursable and pending assignment (lives in the Todo pool)   |
-| `reimbursed:{{group_name}}`  | Assigned to reimbursement group `{{group_name}}`               |
-| *(no tags)*                  | Non-reimbursable — excluded from outstanding amounts           |
+| Tag Pattern                 | Meaning                                                      |
+| --------------------------- | ------------------------------------------------------------ |
+| `todo`                      | Reimbursable and pending assignment (lives in the Todo pool) |
+| `reimbursed:{{group_name}}` | Assigned to reimbursement group `{{group_name}}`             |
+| _(no tags)_                 | Non-reimbursable — excluded from outstanding amounts         |
 
 **Status derivation (checked in order):**
 
@@ -125,14 +125,14 @@ The primary view. A sortable, filterable table showing all transactions for the 
 
 **Columns:**
 
-| Column      | Description                                     | Sortable |
-| ----------- | ----------------------------------------------- | -------- |
-| Date        | Transaction date                                | Yes      |
-| Description | Transaction description                         | Yes      |
-| Amount      | Transaction amount (IDR formatted)              | Yes      |
-| Status      | Badge: Todo / group name / dimmed `—` (non-reimbursable) | Yes    |
-| Select      | Checkbox for bulk operations                    | No       |
-| Actions     | Toggle reimbursable, open in Firefly III        | No       |
+| Column      | Description                                              | Sortable |
+| ----------- | -------------------------------------------------------- | -------- |
+| Date        | Transaction date                                         | Yes      |
+| Description | Transaction description                                  | Yes      |
+| Amount      | Transaction amount (IDR formatted)                       | Yes      |
+| Status      | Badge: Todo / group name / dimmed `—` (non-reimbursable) | Yes      |
+| Select      | Checkbox for bulk operations                             | No       |
+| Actions     | Toggle reimbursable, open in Firefly III                 | No       |
 
 **Behaviors:**
 
@@ -164,11 +164,11 @@ The primary view. A sortable, filterable table showing all transactions for the 
 
 **Group operations:**
 
-| Operation     | Result                                                                    |
-| ------------- | ------------------------------------------------------------------------- |
-| Assign        | Move into an existing group or create a new one                            |
-| Move          | Replace current `reimbursed:X` with `reimbursed:Y`                         |
-| Unassign      | Remove `reimbursed:X`, restore `todo` → back to the Todo pool              |
+| Operation     | Result                                                                        |
+| ------------- | ----------------------------------------------------------------------------- |
+| Assign        | Move into an existing group or create a new one                               |
+| Move          | Replace current `reimbursed:X` with `reimbursed:Y`                            |
+| Unassign      | Remove `reimbursed:X`, restore `todo` → back to the Todo pool                 |
 | Mark excluded | Remove `todo` (and any `reimbursed:*`) → transaction becomes non-reimbursable |
 
 **Bulk execution:** Firefly III has no bulk endpoint, so N transactions require N sequential `PUT`s. Updates run **best-effort**: progress indicator (`12/30…`), failures collected and reported at the end (with the failed IDs), and a single cache refetch when done.
@@ -181,12 +181,12 @@ A summary view above or beside the transaction table.
 
 **Widgets:**
 
-| Widget                   | Data                                                        | Source                            |
-| ------------------------ | ----------------------------------------------------------- | --------------------------------- |
-| Account Balance          | Current balance of selected account                         | Firefly III account data          |
-| Total Unreimbursed       | Sum of amounts tagged `todo` (Todo pool only)               | Computed from transactions        |
-| Reimbursements by Period | Table: period name → total amount, transaction count        | Computed from `reimbursed:*` tags |
-| Monthly Spending Trend   | Bar chart of spending by month                              | Computed from transaction dates   |
+| Widget                   | Data                                                 | Source                            |
+| ------------------------ | ---------------------------------------------------- | --------------------------------- |
+| Account Balance          | Current balance of selected account                  | Firefly III account data          |
+| Total Unreimbursed       | Sum of amounts tagged `todo` (Todo pool only)        | Computed from transactions        |
+| Reimbursements by Period | Table: period name → total amount, transaction count | Computed from `reimbursed:*` tags |
+| Monthly Spending Trend   | Bar chart of spending by month                       | Computed from transaction dates   |
 
 ### F7: CSV Export
 
@@ -214,7 +214,7 @@ A dedicated `/reimbursements` route (fills the existing sidebar nav placeholder)
 
 - Left column: group list — **Todo pool** (count + pending total), then one entry per derived group (count + total), then a collapsible **Non-reimbursable** section
 - Right column: member table of the selected bucket with checkbox multi-select
-- Contextual toolbar: *New reimbursement…*, *Move to…*, *Unassign* (→ Todo pool), *Mark non-reimbursable*
+- Contextual toolbar: _New reimbursement…_, _Move to…_, _Unassign_ (→ Todo pool), _Mark non-reimbursable_
 - "New reimbursement…" dialog offers free-text name with autocomplete from existing groups
 - Both this page and the transaction table expose the same operations via a shared mutation layer
 
@@ -296,12 +296,12 @@ const client = createClient({
 
 **Endpoints used:**
 
-| Method | SDK Service                                                     | Purpose                               |
-| ------ | --------------------------------------------------------------- | ------------------------------------- |
-| GET    | `AccountsService.listAccount({ query: { type: 'liability' } })` | List liability accounts               |
+| Method | SDK Service                                                     | Purpose                                                                       |
+| ------ | --------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| GET    | `AccountsService.listAccount({ query: { type: 'liability' } })` | List liability accounts                                                       |
 | GET    | `AccountsService.listTransactionByAccount({ path: { id } })`    | List ALL transactions for account (loops `?page=N&limit=100` until last page) |
-| GET    | `TransactionsService.getTransaction({ path: { id } })`          | Get single transaction (for tag read) |
-| PUT    | `TransactionsService.updateTransaction({ path: { id }, body })` | Update tags (journal-scoped via `transaction_journal_id`) |
+| GET    | `TransactionsService.getTransaction({ path: { id } })`          | Get single transaction (for tag read)                                         |
+| PUT    | `TransactionsService.updateTransaction({ path: { id }, body })` | Update tags (journal-scoped via `transaction_journal_id`)                     |
 
 ### State Management
 
@@ -395,11 +395,11 @@ const client = createClient({
 
 ### Tag Naming Convention
 
-| Tag                     | Purpose                                                  | Example               |
-| ----------------------- | -------------------------------------------------------- | --------------------- |
-| `todo`                  | Reimbursable, pending assignment (Todo pool)             | `todo`                |
-| `reimbursed:{{group}}`  | Assigned to reimbursement group `{{group}}`              | `reimbursed:Jan-2025` |
-| *(no tags)*             | Non-reimbursable — excluded from outstanding amounts     | —                     |
+| Tag                    | Purpose                                              | Example               |
+| ---------------------- | ---------------------------------------------------- | --------------------- |
+| `todo`                 | Reimbursable, pending assignment (Todo pool)         | `todo`                |
+| `reimbursed:{{group}}` | Assigned to reimbursement group `{{group}}`          | `reimbursed:Jan-2025` |
+| _(no tags)_            | Non-reimbursable — excluded from outstanding amounts | —                     |
 
 Constraints:
 

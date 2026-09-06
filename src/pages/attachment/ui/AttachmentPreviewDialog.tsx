@@ -54,7 +54,11 @@ function AttachmentPreviewDialog({ attachment, onClose }: Props) {
           const response = await fetch(blobUrl)
           const blob = await response.blob()
           const heic2any = (await import('heic2any')).default
-          const converted = await heic2any({ blob, toType: 'image/jpeg', quality: 0.85 })
+          const converted = await heic2any({
+            blob,
+            toType: 'image/jpeg',
+            quality: 0.85,
+          })
           URL.revokeObjectURL(blobUrl)
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- cancelled is set by cleanup during async await
           if (cancelled) return
@@ -79,11 +83,16 @@ function AttachmentPreviewDialog({ attachment, onClose }: Props) {
   const kind = attachment ? pickAttachmentKind(attachment.mime) : null
 
   return (
-    <Dialog open={attachment !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={attachment !== null}
+      onOpenChange={(open) => !open && onClose()}
+    >
       {attachment && (
         <DialogContent className="w-[90vw] max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="truncate pr-6">{attachment.title}</DialogTitle>
+            <DialogTitle className="truncate pr-6">
+              {attachment.title}
+            </DialogTitle>
             <DialogDescription>
               {attachment.filename} · {attachment.mime}
             </DialogDescription>
