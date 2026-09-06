@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   FolderOpenIcon,
   ListChecksIcon,
@@ -6,6 +7,7 @@ import {
 } from 'lucide-react'
 import GroupList from './GroupList'
 import MemberTable from './MemberTable'
+import type { ReimbursementsSearch } from '@/routes/reimbursements'
 import type { TagTransition } from '@/pages/transaction/lib/transaction'
 import { useTransactionData } from '@/pages/transaction/model/use-transaction-data'
 import { collectGroupNames, computeOutstandingTotal, deriveGroups } from '@/pages/transaction/lib/transaction'
@@ -29,16 +31,40 @@ function ReimbursementsContent() {
   const transactions = useTransactionData(accountId, token)
   const buckets = useMemo(() => deriveGroups(transactions), [transactions])
   const existingGroups = useMemo(() => collectGroupNames(transactions), [transactions])
+  const navigate = useNavigate({ from: '/reimbursements' })
+  const { bucket: bucketParam } = useSearch({ from: '/reimbursements' })
 
-  const [bucket, setBucket] = useState<BucketKey>({ kind: 'pool' })
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
+
+  // Parse bucket param into BucketKey
+  const bucket: BucketKey = useMemo(() => {
+    if (bucketParam === 'pool') return { kind: 'pool' }
+    if (bucketParam === 'non-reimbursable') return { kind: 'non-reimbursable' }
+    if (bucketParam.startsWith('group:')) {
+      return { kind: 'group', name: bucketParam.slice(6) }
+    }
+    return { kind: 'pool' }
+  }, [bucketParam])
+
+  const updateSearch = useCallback(
+    (patch: Partial<ReimbursementsSearch>) => {
+      navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true })
+    },
+    [navigate],
+  )
 
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
 
   function switchBucket(next: BucketKey) {
-    setBucket(next)
     setSelectedIds(new Set())
+    if (next.kind === 'pool') {
+      updateSearch({ bucket: 'pool' })
+    } else if (next.kind === 'non-reimbursable') {
+      updateSearch({ bucket: 'non-reimbursable' })
+    } else {
+      updateSearch({ bucket: `group:${next.name}` })
+    }
   }
 
   const items = useMemo(() => {
