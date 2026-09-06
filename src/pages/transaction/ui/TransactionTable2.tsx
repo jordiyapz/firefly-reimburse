@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   columnOrderingFeature,
   columnSizingFeature,
   columnVisibilityFeature,
+  createColumnHelper,
   createPaginatedRowModel,
   createSortedRowModel,
   flexRender,
@@ -23,15 +24,12 @@ import {
 } from 'lucide-react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { collectGroupNames, getPeriodName } from '../lib/transaction'
-import { buildSelectionPatch } from '../lib/selection'
 import { useBatchUpdateTags } from '../model/use-batch-update-tags'
 import type { TransactionSearch } from '@/routes/transactions'
 import type {
   ColumnDef,
   PaginationState,
-  Row,
   SortingState,
-  Table as TanstackTable,
 } from '@tanstack/react-table'
 import type { TagTransition } from '../lib/transaction'
 import type { TransactionRecord } from '../model/interface'
@@ -39,7 +37,6 @@ import AttachmentIcons from '@/pages/attachment/ui/AttachmentIcons'
 import GroupPickerDialog from '@/components/group-picker/GroupPickerDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -212,11 +209,41 @@ const dataColumns: Array<ColumnDef<typeof features, TransactionRecord>> = [
   },
 ]
 
+const columnHelper = createColumnHelper<typeof features, TransactionRecord>()
+const columns = columnHelper.columns([
+  {
+    id: 'select',
+    enableSorting: false,
+    size: 36,
+    header: ({ table }) => (
+      <input
+        type="checkbox"
+        className="size-4 accent-primary cursor-pointer"
+        checked={table.getIsAllRowsSelected()}
+        ref={(el) => {
+          if (el) el.indeterminate = table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()
+        }}
+        onChange={table.getToggleAllRowsSelectedHandler()}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <input
+        type="checkbox"
+        className="size-4 accent-primary cursor-pointer"
+        checked={row.getIsSelected()}
+        onChange={row.getToggleSelectedHandler()}
+        aria-label={`Select ${row.original.description}`}
+      />
+    ),
+  },
+  ...dataColumns,
+])
+
 type Props = { rows: Array<TransactionRecord> }
 
 function TransactionTable2({ rows }: Props) {
   const [dialogMode, setDialogMode] = useState<'assign' | 'move' | null>(null)
-  const lastSelectedIdRef = useRef<string | null>(null)
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
   const navigate = useNavigate({ from: '/transactions' })
   const {
@@ -273,66 +300,6 @@ function TransactionTable2({ rows }: Props) {
       updateSearch({ page: newPagination.pageIndex })
     },
     [pagination, updateSearch],
-  )
-
-  function handleRowCheckboxClick(
-    event: React.MouseEvent<HTMLButtonElement>,
-    row: Row<typeof features, TransactionRecord>,
-    table: TanstackTable<typeof features, TransactionRecord>,
-  ) {
-    const anchorId = lastSelectedIdRef.current
-    lastSelectedIdRef.current = row.id
-    const targetState = !row.getIsSelected()
-
-    if (!event.shiftKey || !anchorId) {
-      row.toggleSelected(targetState)
-      return
-    }
-
-    // Shift+click: select the visible range [anchor..clicked] in one patch.
-    // Falls back to a plain toggle if the anchor is not on the current page/filter.
-    const visibleRows = table.getRowModel().rows
-    const patch = buildSelectionPatch(
-      visibleRows.map((r) => r.id),
-      anchorId,
-      row.id,
-      targetState,
-    )
-    if (!patch) {
-      row.toggleSelected(targetState)
-      return
-    }
-  }
-
-  const columns = useMemo<Array<ColumnDef<typeof features, TransactionRecord>>>(
-    () => [
-      {
-        id: 'select',
-        enableSorting: false,
-        size: 36,
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllRowsSelected() ||
-              (table.getIsSomeRowsSelected() && 'indeterminate')
-            }
-            onCheckedChange={(checked) =>
-              table.toggleAllRowsSelected(checked === true)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row, table }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onClick={(event) => handleRowCheckboxClick(event, row, table)}
-            aria-label={`Select ${row.original.description}`}
-          />
-        ),
-      },
-      ...dataColumns,
-    ],
-    [],
   )
 
   const filteredRows = useMemo(() => {
