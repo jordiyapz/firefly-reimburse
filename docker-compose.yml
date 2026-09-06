@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    image: jordiyapz/firefly-reimburse:${APP_VERSION:-latest}
     container_name: firefly-reimburse
     ports:
       - "3000:80"
