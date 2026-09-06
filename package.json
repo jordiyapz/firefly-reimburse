@@ -11,7 +11,9 @@
     "format": "prettier",
     "check": "prettier --write . && eslint --fix",
     "generate-routes": "tsr generate",
-    "watch-routes": "tsr watch"
+    "watch-routes": "tsr watch",
+    "docker:build": "docker build -t jordiyapz/firefly-reimburse:latest .",
+    "docker:push": "docker push jordiyapz/firefly-reimburse:latest"
   },
   "dependencies": {
     "@billos/firefly-iii-sdk": "6.5.5-sdk.6",
