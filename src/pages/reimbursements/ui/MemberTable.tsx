@@ -1,23 +1,22 @@
-import { useMemo, useState } from 'react'
-import {
-  flexRender,
-  stockFeatures,
-  useTable,
-} from '@tanstack/react-table'
+import { useEffect, useMemo, useState } from 'react'
+import { flexRender, stockFeatures, useTable } from '@tanstack/react-table'
 import dayjs from 'dayjs'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 import 'dayjs/locale/id'
-import {
-  ArrowUpDown,
-  ExternalLink,
-} from 'lucide-react'
+import { ArrowUpDown, ExternalLink } from 'lucide-react'
+import SelectionToolbar from './SelectionToolbar'
+import type { DialogMode } from './SelectionToolbar'
+import type { BucketKey } from './ReimbursementsPage'
 import type {
+  Column,
   ColumnDef,
   RowSelectionState,
   SortingState,
   StockFeatures,
 } from '@tanstack/react-table'
 import type { TransactionRecord } from '@/pages/transaction/model/interface'
+import type { TagTransition } from '@/pages/transaction/lib/transaction'
+import { getGroupNameFromTags } from '@/pages/transaction/lib/transaction'
 import { formatIdr } from '@/shared/lib/format-currency'
 import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -31,15 +30,46 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import AttachmentIcons from '@/pages/attachment/ui/AttachmentIcons'
+import GroupPickerDialog from '@/components/group-picker/GroupPickerDialog'
 
 dayjs.locale('id')
 dayjs.extend(LocalizedFormat)
 
 type Props = {
   rows: Array<TransactionRecord>
-  selectedIds: Set<number>
-  onToggle: (id: number, checked: boolean) => void
-  onToggleAll: (checked: boolean) => void
+  bucketKind: BucketKey['kind']
+  existingGroups: Array<string>
+  isPending: boolean
+  progress: { done: number; total: number } | null
+  isDownloading: boolean
+  downloadProgress: { done: number; total: number } | null
+  onBulkAction: (
+    selected: Array<TransactionRecord>,
+    transition: TagTransition,
+  ) => Promise<void>
+  onDownload: (selected: Array<TransactionRecord>, groupName: string) => void
+}
+
+function SortableHeader({
+  label,
+  column,
+  className,
+}: {
+  label: string
+  column: Column<StockFeatures, TransactionRecord>
+  className?: string
+}) {
+  return (
+    <Button
+      variant={column.getIsSorted() ? 'outline' : 'ghost'}
+      size="sm"
+      onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      className={cn('h-8 px-2 text-xs font-medium', className)}
+    >
+      {label}
+      <ArrowUpDown className="ml-1 size-3" />
+    </Button>
+  )
 }
 
 const columns: Array<ColumnDef<StockFeatures, TransactionRecord>> = [
@@ -70,61 +100,31 @@ const columns: Array<ColumnDef<StockFeatures, TransactionRecord>> = [
   {
     id: 'date',
     accessorKey: 'date',
-    header: ({ column }) => (
-      <Button
-        variant={column.getIsSorted() ? 'outline' : 'ghost'}
-        size="sm"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="h-8 px-2 text-xs font-medium"
-      >
-        Date
-        <ArrowUpDown className="ml-1 size-3" />
-      </Button>
+    header: ({ column }) => <SortableHeader label="Date" column={column} />,
+    cell: ({ row }) => (
+      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+        {row.original.date.format('DD MMM YYYY')}
+      </span>
     ),
-    cell: ({ row }) => {
-      const date = row.original.date
-      return (
-        <span className="font-mono text-xs tabular-nums text-muted-foreground">
-          {date.format('DD MMM YYYY')}
-        </span>
-      )
-    },
     size: 110,
   },
   {
     id: 'description',
     accessorKey: 'description',
     header: ({ column }) => (
-      <Button
-        variant={column.getIsSorted() ? 'outline' : 'ghost'}
-        size="sm"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="h-8 px-2 text-xs font-medium"
-      >
-        Description
-        <ArrowUpDown className="ml-1 size-3" />
-      </Button>
+      <SortableHeader label="Description" column={column} />
     ),
-    cell: ({ row }) => {
-      const desc = row.original.description
-      return (
-        <span className="text-sm truncate max-w-60 block">{desc}</span>
-      )
-    },
+    cell: ({ row }) => (
+      <span className="text-sm truncate max-w-60 block">
+        {row.original.description}
+      </span>
+    ),
   },
   {
     id: 'amount',
     accessorKey: 'amount',
     header: ({ column }) => (
-      <Button
-        variant={column.getIsSorted() ? 'outline' : 'ghost'}
-        size="sm"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="h-8 px-2 text-xs font-medium ml-auto"
-      >
-        Amount
-        <ArrowUpDown className="ml-1 size-3" />
-      </Button>
+      <SortableHeader label="Amount" column={column} className="ml-auto" />
     ),
     cell: ({ row }) => {
       const amount = row.original.amount
@@ -146,15 +146,7 @@ const columns: Array<ColumnDef<StockFeatures, TransactionRecord>> = [
     id: 'files',
     accessorFn: (row) => row.has_attachments,
     header: ({ column }) => (
-      <Button
-        variant={column.getIsSorted() ? 'outline' : 'ghost'}
-        size="sm"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="h-8 px-2 text-xs font-medium ml-auto"
-      >
-        Files
-        <ArrowUpDown className="ml-1 size-3" />
-      </Button>
+      <SortableHeader label="Files" column={column} className="ml-auto" />
     ),
     cell: ({ row }) => (
       <AttachmentIcons
@@ -168,69 +160,64 @@ const columns: Array<ColumnDef<StockFeatures, TransactionRecord>> = [
     id: 'actions',
     header: 'Actions',
     enableSorting: false,
-    cell: ({ row }) => {
-      const id = row.original.transactionId
-      return (
-        <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon-xs" asChild>
-            <a
-              href={`${import.meta.env.VITE_FIREFLY_URL}/transactions/show/${id}`}
-              rel="noopener"
-              target="_blank"
-            >
-              <ExternalLink className="size-3.5" />
-            </a>
-          </Button>
-        </div>
-      )
-    },
+    cell: ({ row }) => (
+      <Button variant="ghost" size="icon-xs" asChild>
+        <a
+          href={`${import.meta.env.VITE_FIREFLY_URL}/transactions/show/${row.original.transactionId}`}
+          rel="noopener"
+          target="_blank"
+        >
+          <ExternalLink className="size-3.5" />
+        </a>
+      </Button>
+    ),
     size: 60,
   },
 ]
 
-function MemberTable({ rows, selectedIds, onToggle, onToggleAll }: Props) {
+function MemberTable({
+  rows,
+  bucketKind,
+  existingGroups,
+  isPending,
+  progress,
+  isDownloading,
+  downloadProgress,
+  onBulkAction,
+  onDownload,
+}: Props) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'date', desc: true },
   ])
-
-  // Sync external selectedIds to rowSelection state
-  const rowSelection: RowSelectionState = useMemo(() => {
-    const selection: RowSelectionState = {}
-    for (const id of selectedIds) {
-      const rowIndex = rows.findIndex((r) => r.id === id)
-      if (rowIndex !== -1) {
-        selection[String(rowIndex)] = true
-      }
-    }
-    return selection
-  }, [selectedIds, rows])
+  const [dialogMode, setDialogMode] = useState<DialogMode>(null)
 
   const table = useTable({
     data: rows,
     columns,
     features: stockFeatures,
     getRowId: (row) => String(row.id),
-    state: { sorting, rowSelection },
+    state: { sorting },
     onSortingChange: setSorting,
-    onRowSelectionChange: (updater) => {
-      const newSelection = typeof updater === 'function'
-        ? updater(rowSelection)
-        : updater
-      // Convert row index selection back to IDs
-      const newIds = new Set<number>()
-      for (const index of Object.keys(newSelection)) {
-        const rowIndex = Number(index)
-        if (rowIndex < rows.length) {
-          newIds.add(rows[rowIndex].id)
-        }
-      }
-      onToggleAll(false) // Clear all first
-      for (const id of newIds) {
-        onToggle(id, true)
-      }
-    },
     enableRowSelection: true,
   })
+
+  useEffect(() => {
+    table.resetRowSelection()
+  }, [rows])
+
+  const selected = Object.keys(table.state.rowSelection)
+    .map((id) => rows.find((r) => r.id == Number(id)))
+    .filter((x) => !!x)
+
+  const groupName = useMemo(
+    () => getGroupNameFromTags(selected[0]?.tags),
+    [selected],
+  )
+
+  async function applyTransition(transition: TagTransition) {
+    if (selected.length === 0) return
+    await onBulkAction(selected, transition)
+  }
 
   if (rows.length === 0) {
     return (
@@ -241,62 +228,96 @@ function MemberTable({ rows, selectedIds, onToggle, onToggleAll }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow
-              key={headerGroup.id}
-              className="border-b border-border hover:bg-transparent"
-            >
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  style={{ width: header.column.columnDef.size }}
-                  className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground h-9"
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row, index) => (
+    <>
+      <div className="rounded-lg border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && 'selected'}
-                className={cn(
-                  'border-b border-border/50 transition-colors',
-                  index % 2 === 0 ? 'bg-transparent' : 'bg-muted/30',
-                )}
+                key={headerGroup.id}
+                className="border-b border-border hover:bg-transparent"
               >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-2.5">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    style={{ width: header.column.columnDef.size }}
+                    className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground h-9"
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={table.getAllLeafColumns().length}
-                className="h-24 text-center text-muted-foreground"
-              >
-                No transactions found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.length ? (
+              table.getRowModel().rows.map((row, index) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
+                  className={cn(
+                    'border-b border-border/50 transition-colors',
+                    index % 2 === 0 ? 'bg-transparent' : 'bg-muted/30',
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="py-2.5">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={table.getAllLeafColumns().length}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No transactions found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {selected.length > 0 && (
+        <SelectionToolbar
+          count={selected.length}
+          total={selected.reduce((acc, tx) => acc + tx.amount, 0)}
+          bucketKind={bucketKind}
+          isPending={isPending}
+          progress={progress}
+          isDownloading={isDownloading}
+          downloadProgress={downloadProgress}
+          onApplyTransition={applyTransition}
+          onDownload={() => onDownload(selected, groupName)}
+          onClear={() => table.resetRowSelection()}
+          onOpenDialog={setDialogMode}
+        />
+      )}
+
+      {dialogMode !== null && (
+        <GroupPickerDialog
+          open
+          mode={dialogMode}
+          count={selected.length}
+          existingGroups={existingGroups}
+          onOpenChange={(open) => !open && setDialogMode(null)}
+          onSubmit={(name) =>
+            applyTransition({ type: 'assign', groupName: name })
+          }
+        />
+      )}
+    </>
   )
 }
 

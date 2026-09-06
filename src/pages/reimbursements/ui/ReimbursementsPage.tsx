@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   FolderOpenIcon,
@@ -9,35 +9,36 @@ import GroupList from './GroupList'
 import MemberTable from './MemberTable'
 import type { ReimbursementsSearch } from '@/routes/reimbursements'
 import type { TagTransition } from '@/pages/transaction/lib/transaction'
+import type { TransactionRecord } from '@/pages/transaction/model/interface'
 import { useTransactionData } from '@/pages/transaction/model/use-transaction-data'
-import { collectGroupNames, computeOutstandingTotal, deriveGroups } from '@/pages/transaction/lib/transaction'
+import {
+  collectGroupNames,
+  computeOutstandingTotal,
+  deriveGroups,
+} from '@/pages/transaction/lib/transaction'
 import { useBatchUpdateTags } from '@/pages/transaction/model/use-batch-update-tags'
+import { useBatchDownload } from '@/pages/attachment/model/use-batch-download'
 import { useToken } from '@/shared/auth'
 import { AppShell, useSelectedAccount } from '@/components/layout/AppShell'
-import GroupPickerDialog from '@/components/group-picker/GroupPickerDialog'
 import { Button } from '@/components/ui/button'
-import { formatIdr } from '@/shared/lib/format-currency'
 
 export type BucketKey =
   | { kind: 'pool' }
   | { kind: 'group'; name: string }
   | { kind: 'non-reimbursable' }
 
-type DialogMode = 'assign' | 'move' | null
-
 function ReimbursementsContent() {
   const token = useToken()
   const { accountId } = useSelectedAccount()
   const transactions = useTransactionData(accountId, token)
   const buckets = useMemo(() => deriveGroups(transactions), [transactions])
-  const existingGroups = useMemo(() => collectGroupNames(transactions), [transactions])
+  const existingGroups = useMemo(
+    () => collectGroupNames(transactions),
+    [transactions],
+  )
   const navigate = useNavigate({ from: '/reimbursements' })
   const { bucket: bucketParam } = useSearch({ from: '/reimbursements' })
 
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [dialogMode, setDialogMode] = useState<DialogMode>(null)
-
-  // Parse bucket param into BucketKey
   const bucket: BucketKey = useMemo(() => {
     if (bucketParam === 'pool') return { kind: 'pool' }
     if (bucketParam === 'non-reimbursable') return { kind: 'non-reimbursable' }
@@ -55,9 +56,15 @@ function ReimbursementsContent() {
   )
 
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
+  const {
+    isDownloading,
+    progress: downloadProgress,
+    error: downloadError,
+    downloadSelected,
+    clearError,
+  } = useBatchDownload()
 
   function switchBucket(next: BucketKey) {
-    setSelectedIds(new Set())
     if (next.kind === 'pool') {
       updateSearch({ bucket: 'pool' })
     } else if (next.kind === 'non-reimbursable') {
@@ -73,13 +80,20 @@ function ReimbursementsContent() {
     return buckets.groups.find((g) => g.name === bucket.name)?.items ?? []
   }, [bucket, buckets])
 
-  const selected = items.filter((tx) => selectedIds.has(tx.id))
   const outstandingTotal = computeOutstandingTotal(buckets.pool)
 
-  async function applyTransition(transition: TagTransition) {
-    if (selected.length === 0) return
+  async function handleBulkAction(
+    selected: Array<TransactionRecord>,
+    transition: TagTransition,
+  ) {
     await runBatchAsync({ transactions: selected, transition })
-    setSelectedIds(new Set())
+  }
+
+  function handleDownload(
+    selected: Array<TransactionRecord>,
+    groupName: string,
+  ) {
+    downloadSelected(selected, groupName)
   }
 
   if (accountId === null) {
@@ -126,94 +140,29 @@ function ReimbursementsContent() {
               {items.length} transaction{items.length === 1 ? '' : 's'}
             </span>
           </h3>
-          {isPending && progress && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              Updating… {progress.done}/{progress.total}
-            </span>
-          )}
         </div>
 
         <MemberTable
           rows={items}
-          selectedIds={selectedIds}
-          onToggle={(id, checked) =>
-            setSelectedIds((prev) => {
-              const next = new Set(prev)
-              if (checked) next.add(id)
-              else next.delete(id)
-              return next
-            })
-          }
-          onToggleAll={(checked) =>
-            setSelectedIds(checked ? new Set(items.map((tx) => tx.id)) : new Set())
-          }
+          bucketKind={bucket.kind}
+          existingGroups={existingGroups}
+          isPending={isPending}
+          progress={progress}
+          isDownloading={isDownloading}
+          downloadProgress={downloadProgress}
+          onBulkAction={handleBulkAction}
+          onDownload={handleDownload}
         />
 
-        {selected.length > 0 && (
-          <div className="border border-border rounded-lg bg-background p-2 shadow-lg flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground px-1 mr-auto">
-              {selected.length} selected ·{' '}
-              {formatIdr(selected.reduce((acc, tx) => acc + tx.amount, 0))}
-            </span>
-            {(bucket.kind === 'pool' || bucket.kind === 'group') && (
-              <>
-                <Button
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => setDialogMode(bucket.kind === 'group' ? 'move' : 'assign')}
-                >
-                  {bucket.kind === 'group' ? 'Move to…' : 'New reimbursement…'}
-                </Button>
-                {bucket.kind === 'group' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => applyTransition({ type: 'mark-todo' })}
-                  >
-                    Unassign → todo
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => applyTransition({ type: 'exclude' })}
-                >
-                  Mark non-reimbursable
-                </Button>
-              </>
-            )}
-            {bucket.kind === 'non-reimbursable' && (
-              <Button
-                size="sm"
-                disabled={isPending}
-                onClick={() => applyTransition({ type: 'mark-todo' })}
-              >
-                Mark reimbursable
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds(new Set())}
-            >
-              Clear
+        {downloadError && (
+          <div className="border border-destructive/50 rounded-lg bg-destructive/10 p-2 text-xs text-destructive flex items-center justify-between">
+            <span>{downloadError}</span>
+            <Button variant="ghost" size="sm" onClick={clearError}>
+              Dismiss
             </Button>
           </div>
         )}
       </section>
-
-      {dialogMode !== null && (
-        <GroupPickerDialog
-          open
-          mode={dialogMode}
-          count={selected.length}
-          existingGroups={existingGroups}
-          onOpenChange={(open) => !open && setDialogMode(null)}
-          onSubmit={(groupName) => applyTransition({ type: 'assign', groupName })}
-        />
-      )}
     </div>
   )
 }
