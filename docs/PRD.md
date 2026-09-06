@@ -227,7 +227,7 @@ A dedicated `/reimbursements` route (fills the existing sidebar nav placeholder)
 | Framework       | React                        | 19        |
 | Routing         | TanStack Router (file-based) | 1.x       |
 | Data Fetching   | TanStack Query (React Query) | 5.x       |
-| Tables          | TanStack Table               | 8.x       |
+| Tables          | TanStack Table               | 9.x       |
 | Styling         | Tailwind CSS + shadcn/ui     | 4.x       |
 | Validation      | Zod                          | 4.x       |
 | Build           | Vite + TypeScript            | 7.x / 5.x |
