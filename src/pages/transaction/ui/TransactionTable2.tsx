@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -14,9 +14,11 @@ import {
   ChevronRightIcon,
   ExternalLink,
 } from 'lucide-react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { collectGroupNames, getPeriodName } from '../lib/transaction'
 import { buildSelectionPatch } from '../lib/selection'
 import { useBatchUpdateTags } from '../model/use-batch-update-tags'
+import type { TransactionSearch } from '@/routes/transactions'
 import type {
   ColumnDef,
   Row,
@@ -206,11 +208,18 @@ function TransactionTable2({ rows }: Props) {
     { id: 'date', desc: true },
   ])
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dialogMode, setDialogMode] = useState<'assign' | 'move' | null>(null)
   const lastSelectedIdRef = useRef<string | null>(null)
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
+  const navigate = useNavigate({ from: '/transactions' })
+  const { q: search, status: statusFilter, from: dateFrom, to: dateTo } = useSearch({ from: '/transactions' })
+
+  const updateSearch = useCallback(
+    (patch: Partial<TransactionSearch>) => {
+      navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true })
+    },
+    [navigate],
+  )
 
   function handleRowCheckboxClick(
     event: React.MouseEvent<HTMLButtonElement>,
@@ -275,12 +284,16 @@ function TransactionTable2({ rows }: Props) {
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
+    const from = dateFrom ? dayjs(dateFrom) : null
+    const to = dateTo ? dayjs(dateTo).endOf('day') : null
     return rows.filter((row) => {
       if (term && !row.description.toLowerCase().includes(term)) return false
       if (statusFilter !== 'all' && row.status !== statusFilter) return false
+      if (from && row.date.isBefore(from)) return false
+      if (to && row.date.isAfter(to)) return false
       return true
     })
-  }, [rows, search, statusFilter])
+  }, [rows, search, statusFilter, dateFrom, dateTo])
 
   const table = useReactTable({
     data: filteredRows,
@@ -343,14 +356,14 @@ function TransactionTable2({ rows }: Props) {
         <Input
           placeholder="Search description…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => updateSearch({ q: e.target.value })}
           className="max-w-56 h-8 text-sm"
         />
         <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5">
           {STATUS_FILTERS.map((filter) => (
             <button
               key={filter.value}
-              onClick={() => setStatusFilter(filter.value)}
+              onClick={() => updateSearch({ status: filter.value })}
               className={cn(
                 'px-2 py-1 text-xs rounded transition-colors',
                 statusFilter === filter.value
@@ -361,6 +374,21 @@ function TransactionTable2({ rows }: Props) {
               {filter.label}
             </button>
           ))}
+        </div>
+        <div className="flex items-center gap-1 text-xs">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => updateSearch({ from: e.target.value })}
+            className="h-8 px-2 text-sm border border-border rounded-md bg-transparent"
+          />
+          <span className="text-muted-foreground">–</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => updateSearch({ to: e.target.value })}
+            className="h-8 px-2 text-sm border border-border rounded-md bg-transparent"
+          />
         </div>
         <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
           <span>
