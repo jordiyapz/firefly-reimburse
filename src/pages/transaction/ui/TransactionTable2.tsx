@@ -30,7 +30,6 @@ import type {
   ColumnDef,
   PaginationState,
   Row,
-  RowSelectionState,
   SortingState,
   Table as TanstackTable,
 } from '@tanstack/react-table'
@@ -189,13 +188,6 @@ const dataColumns: Array<ColumnDef<typeof features, TransactionRecord>> = [
     ),
     size: 70,
   },
-  // {
-  //   id: 'reimbursable',
-  //   enableSorting: false,
-  //   header: 'Todo',
-  //   cell: ({ row }) => <TodoSwitch transaction={row.original} />,
-  //   size: 60,
-  // },
   {
     id: 'actions',
     header: 'Actions',
@@ -223,7 +215,6 @@ const dataColumns: Array<ColumnDef<typeof features, TransactionRecord>> = [
 type Props = { rows: Array<TransactionRecord> }
 
 function TransactionTable2({ rows }: Props) {
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [dialogMode, setDialogMode] = useState<'assign' | 'move' | null>(null)
   const lastSelectedIdRef = useRef<string | null>(null)
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
@@ -311,7 +302,6 @@ function TransactionTable2({ rows }: Props) {
       row.toggleSelected(targetState)
       return
     }
-    setRowSelection((prev) => ({ ...prev, ...patch }))
   }
 
   const columns = useMemo<Array<ColumnDef<typeof features, TransactionRecord>>>(
@@ -363,9 +353,8 @@ function TransactionTable2({ rows }: Props) {
     columns,
     features,
     getRowId: (row) => String(row.id),
-    state: { sorting, rowSelection, pagination },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
-    onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
     enableRowSelection: true,
     autoResetPageIndex: false,
@@ -375,10 +364,10 @@ function TransactionTable2({ rows }: Props) {
 
   const selectedTransactions = useMemo(
     () =>
-      Object.keys(rowSelection)
-        .map(([id]) => filteredRows.find((row) => String(row.id) === id))
+      Object.keys(table.state.rowSelection)
+        .map((id) => filteredRows.find((row) => row.id === Number(id)))
         .filter((row): row is TransactionRecord => row !== undefined),
-    [rowSelection, filteredRows],
+    [table.state.rowSelection, filteredRows],
   )
 
   const allSelectedAssigned =
@@ -392,21 +381,30 @@ function TransactionTable2({ rows }: Props) {
 
   async function applyTransition(transition: TagTransition) {
     await runBatchAsync({ transactions: selectedTransactions, transition })
-    setRowSelection({})
+    table.resetRowSelection()
   }
 
   async function markExcludedReimbursable() {
     // Target only the non-reimbursable rows: mark-todo on an assigned row
     // would strip its reimbursed:* tag (an implicit unassign).
-    await runBatchAsync({
-      transactions: excludedSelected,
-      transition: { type: 'mark-todo' },
-    })
-    setRowSelection((prev) => {
-      const next = { ...prev }
-      for (const tx of excludedSelected) delete next[String(tx.id)]
-      return next
-    })
+    try {
+      await runBatchAsync({
+        transactions: excludedSelected,
+        transition: { type: 'mark-todo' },
+      })
+    } catch (error) {
+      console.error(error)
+    }
+
+    const excludedIds = new Set(excludedSelected.map((x) => x.id))
+    table.setRowSelection(
+      Object.fromEntries(
+        Object.keys(table.state.rowSelection)
+          .map(Number)
+          .filter((id) => !excludedIds.has(id))
+          .map((id) => [id, true]),
+      ),
+    )
   }
 
   return (
@@ -591,7 +589,6 @@ function TransactionTable2({ rows }: Props) {
             variant="ghost"
             size="sm"
             onClick={() => {
-              setRowSelection({})
               table.resetRowSelection()
             }}
           >
