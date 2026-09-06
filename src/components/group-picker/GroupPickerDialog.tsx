@@ -58,8 +58,8 @@ function GroupPickerDialog({
             {mode === 'assign' ? 'New reimbursement' : 'Move to group'}
           </DialogTitle>
           <DialogDescription>
-            {count} transaction{count === 1 ? '' : 's'} selected. Existing tags are
-            preserved.
+            {count} transaction{count === 1 ? '' : 's'} selected. Existing tags
+            are preserved.
           </DialogDescription>
         </DialogHeader>
 
@@ -96,7 +96,11 @@ function GroupPickerDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
           <Button
@@ -104,7 +108,9 @@ function GroupPickerDialog({
             disabled={!canSubmit}
             onClick={() => submit(trimmed)}
           >
-            {exactMatch || mode === 'move' ? null : <PlusIcon className="size-4" />}
+            {exactMatch || mode === 'move' ? null : (
+              <PlusIcon className="size-4" />
+            )}
             {mode === 'assign' ? `Create & assign ${count}` : `Move ${count}`}
           </Button>
         </DialogFooter>

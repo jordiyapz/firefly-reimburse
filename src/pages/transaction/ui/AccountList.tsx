@@ -107,7 +107,8 @@ function AccountList({ accountId, onItemClick, togglePin, isPinned }: Props) {
       .filter((a) => !isPinned(a.id) && a.active)
       .sort((a, b) => a.name.localeCompare(b.name))
     const fallbackId = favorites.at(0)?.id ?? others.at(0)?.id
-    if (fallbackId !== undefined && fallbackId !== accountId) onItemClick(fallbackId)
+    if (fallbackId !== undefined && fallbackId !== accountId)
+      onItemClick(fallbackId)
   }, [accounts, accountId, isPinned, onItemClick])
 
   if (queryRes.isLoading) {
@@ -119,7 +120,9 @@ function AccountList({ accountId, onItemClick, togglePin, isPinned }: Props) {
   }
 
   const favoriteAccounts = accounts.filter((a) => isPinned(a.id))
-  const otherAccounts = accounts.filter((a) => !isPinned(a.id) && a.active).sort((a,b) => a.name.localeCompare(b.name))
+  const otherAccounts = accounts
+    .filter((a) => !isPinned(a.id) && a.active)
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <div className="flex flex-col">

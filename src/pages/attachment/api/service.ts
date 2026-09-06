@@ -31,7 +31,9 @@ function mapToRecord(raw: {
   }
 }
 
-export async function listAllAttachments(token: string): Promise<Array<AttachmentRecord>> {
+export async function listAllAttachments(
+  token: string,
+): Promise<Array<AttachmentRecord>> {
   if (!token) throw new Error('Token required')
   const client = getFireflyClient(token)
 

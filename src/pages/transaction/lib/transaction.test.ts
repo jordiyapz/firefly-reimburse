@@ -8,11 +8,7 @@ import {
   validatePeriodName,
 } from './transaction'
 
-const tx = (
-  transactionId: number,
-  tags: Array<string>,
-  amount = -100,
-) => ({
+const tx = (transactionId: number, tags: Array<string>, amount = -100) => ({
   transactionId,
   id: transactionId * 10,
   description: `tx-${transactionId}`,
@@ -83,10 +79,10 @@ describe('buildTransitionTags', () => {
   })
 
   it('assign replaces existing group with exactly one reimbursed tag', () => {
-    const tags = buildTransitionTags(
-      tx(1, ['water', 'reimbursed:Old']),
-      { type: 'assign', groupName: 'New' },
-    )
+    const tags = buildTransitionTags(tx(1, ['water', 'reimbursed:Old']), {
+      type: 'assign',
+      groupName: 'New',
+    })
     expect(tags).toEqual(['water', 'reimbursed:New'])
   })
 

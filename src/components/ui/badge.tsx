@@ -1,6 +1,6 @@
 import * as React from 'react'
-import {  cva } from 'class-variance-authority'
-import type {VariantProps} from 'class-variance-authority';
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
 
@@ -13,7 +13,8 @@ const badgeVariants = cva(
         secondary: 'border-transparent bg-secondary text-secondary-foreground',
         outline: 'text-foreground',
         todo: 'border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400',
-        assigned: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+        assigned:
+          'border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
         muted: 'border-border bg-muted/50 text-muted-foreground',
       },
     },

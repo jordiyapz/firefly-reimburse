@@ -57,9 +57,21 @@ Derived from [PRD.md](./PRD.md). Checkbox items map to milestones.
 
 **Post-Phase fixes**
 
-- [x] `useAccountSelection` rewritten as an external store (`useSyncExternalStore` + listener set + localStorage) — pages consumed account context *above* its provider and permanently saw `accountId: null`
+- [x] `useAccountSelection` rewritten as an external store (`useSyncExternalStore` + listener set + localStorage) — pages consumed account context _above_ its provider and permanently saw `accountId: null`
 - [x] Synchronous hydration from localStorage on first render (was async `useEffect`, causing a null flash)
 - [x] Auto-select first visible account (pinned favorites first) when selection is empty or stale, per PRD F2
+
+**Attachment preview**
+
+- [x] PDF preview using `react-pdf` (replaces broken `<iframe>` approach)
+- [x] HEIC/HEIF image support via `heic2any` client-side conversion to JPEG
+- [x] Download and Open-in-new-tab buttons on all preview types
+
+**Infrastructure**
+
+- [x] Migrate `@tanstack/react-table` from v8 to v9 (explicit features, `useTable`, row model factories)
+- [x] URL search query for transaction table filters (search, status, date range, sort, page)
+- [x] URL search query for reimbursement bucket selection
 
 ## Milestone 3: Dashboard
 
@@ -70,7 +82,7 @@ Derived from [PRD.md](./PRD.md). Checkbox items map to milestones.
 
 ## Milestone 4: Polish
 
-- [ ] Date range filter with presets (This Month, Last 3 Months, This Year, All Time)
+- [x] Date range filter with default 3-month range (on transactions page)
 - [ ] CSV export respects current filters (status, date range, search)
 - [ ] Unit tests for `mapRawTransactionToRecord`
 - [ ] Loading states (skeletons) for transaction table and dashboard

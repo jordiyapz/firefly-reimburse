@@ -13,8 +13,18 @@ type NavItem = {
 }
 
 const NAV_ITEMS: Array<NavItem> = [
-  { id: 'transactions', to: '/transactions', label: 'Transactions', icon: CreditCardIcon },
-  { id: 'reimbursements', to: '/reimbursements', label: 'Reimbursements', icon: ReceiptIcon },
+  {
+    id: 'transactions',
+    to: '/transactions',
+    label: 'Transactions',
+    icon: CreditCardIcon,
+  },
+  {
+    id: 'reimbursements',
+    to: '/reimbursements',
+    label: 'Reimbursements',
+    icon: ReceiptIcon,
+  },
 ]
 
 type Props = {

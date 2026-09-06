@@ -1,10 +1,18 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
+  columnOrderingFeature,
+  columnSizingFeature,
+  columnVisibilityFeature,
+  createColumnHelper,
+  createPaginatedRowModel,
+  createSortedRowModel,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  tableFeatures,
+  useTable,
 } from '@tanstack/react-table'
 import dayjs from 'dayjs'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
@@ -14,14 +22,14 @@ import {
   ChevronRightIcon,
   ExternalLink,
 } from 'lucide-react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { collectGroupNames, getPeriodName } from '../lib/transaction'
-import { buildSelectionPatch } from '../lib/selection'
 import { useBatchUpdateTags } from '../model/use-batch-update-tags'
+import type { TransactionSearch } from '@/routes/transactions'
 import type {
   ColumnDef,
-  Row,
+  PaginationState,
   SortingState,
-  Table as TanstackTable,
 } from '@tanstack/react-table'
 import type { TagTransition } from '../lib/transaction'
 import type { TransactionRecord } from '../model/interface'
@@ -29,7 +37,6 @@ import AttachmentIcons from '@/pages/attachment/ui/AttachmentIcons'
 import GroupPickerDialog from '@/components/group-picker/GroupPickerDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -47,6 +54,18 @@ dayjs.extend(LocalizedFormat)
 
 const PAGE_SIZE = 50
 
+const features = tableFeatures({
+  rowSortingFeature,
+  rowSelectionFeature,
+  rowPaginationFeature,
+  columnSizingFeature,
+  columnOrderingFeature,
+  columnVisibilityFeature,
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  sortFns: { alphanumeric: sortFn_alphanumeric },
+})
+
 type StatusFilter = 'all' | 'todo' | 'assigned' | 'non-reimbursable'
 
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
@@ -56,7 +75,7 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'non-reimbursable', label: 'Excluded' },
 ]
 
-const dataColumns: Array<ColumnDef<TransactionRecord>> = [
+const dataColumns: Array<ColumnDef<typeof features, TransactionRecord>> = [
   {
     id: 'date',
     accessorKey: 'date',
@@ -96,9 +115,7 @@ const dataColumns: Array<ColumnDef<TransactionRecord>> = [
     ),
     cell: ({ row }) => {
       const desc = row.original.description
-      return (
-        <span className="text-sm truncate max-w-60 block">{desc}</span>
-      )
+      return <span className="text-sm truncate max-w-60 block">{desc}</span>
     },
   },
   {
@@ -168,13 +185,6 @@ const dataColumns: Array<ColumnDef<TransactionRecord>> = [
     ),
     size: 70,
   },
-  // {
-  //   id: 'reimbursable',
-  //   enableSorting: false,
-  //   header: 'Todo',
-  //   cell: ({ row }) => <TodoSwitch transaction={row.original} />,
-  //   size: 60,
-  // },
   {
     id: 'actions',
     header: 'Actions',
@@ -199,101 +209,121 @@ const dataColumns: Array<ColumnDef<TransactionRecord>> = [
   },
 ]
 
+const columnHelper = createColumnHelper<typeof features, TransactionRecord>()
+const columns = columnHelper.columns([
+  {
+    id: 'select',
+    enableSorting: false,
+    size: 36,
+    header: ({ table }) => (
+      <input
+        type="checkbox"
+        className="size-4 accent-primary cursor-pointer"
+        checked={table.getIsAllRowsSelected()}
+        ref={(el) => {
+          if (el) el.indeterminate = table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()
+        }}
+        onChange={table.getToggleAllRowsSelectedHandler()}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <input
+        type="checkbox"
+        className="size-4 accent-primary cursor-pointer"
+        checked={row.getIsSelected()}
+        onChange={row.getToggleSelectedHandler()}
+        aria-label={`Select ${row.original.description}`}
+      />
+    ),
+  },
+  ...dataColumns,
+])
+
 type Props = { rows: Array<TransactionRecord> }
 
 function TransactionTable2({ rows }: Props) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'date', desc: true },
-  ])
-  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dialogMode, setDialogMode] = useState<'assign' | 'move' | null>(null)
-  const lastSelectedIdRef = useRef<string | null>(null)
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
+  const navigate = useNavigate({ from: '/transactions' })
+  const {
+    q: search,
+    status: statusFilter,
+    from: dateFrom,
+    to: dateTo,
+    sort,
+    page,
+  } = useSearch({ from: '/transactions' })
 
-  function handleRowCheckboxClick(
-    event: React.MouseEvent<HTMLButtonElement>,
-    row: Row<TransactionRecord>,
-    table: TanstackTable<TransactionRecord>,
-  ) {
-    const anchorId = lastSelectedIdRef.current
-    lastSelectedIdRef.current = row.id
-    const targetState = !row.getIsSelected()
+  const updateSearch = useCallback(
+    (patch: Partial<TransactionSearch>) => {
+      navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true })
+    },
+    [navigate],
+  )
 
-    if (!event.shiftKey || !anchorId) {
-      row.toggleSelected(targetState)
-      return
-    }
+  // Parse sort string "field,desc" into SortingState
+  const sorting: SortingState = useMemo(() => {
+    if (!sort) return [{ id: 'date', desc: true }]
+    const [id, direction] = sort.split(',')
+    return [{ id: id || 'date', desc: direction !== 'asc' }]
+  }, [sort])
 
-    // Shift+click: select the visible range [anchor..clicked] in one patch.
-    // Falls back to a plain toggle if the anchor is not on the current page/filter.
-    const visibleRows = table.getRowModel().rows
-    const patch = buildSelectionPatch(
-      visibleRows.map((r) => r.id),
-      anchorId,
-      row.id,
-      targetState,
-    )
-    if (!patch) {
-      row.toggleSelected(targetState)
-      return
-    }
-    setRowSelection((prev) => ({ ...prev, ...patch }))
-  }
+  const setSorting = useCallback(
+    (updater: SortingState | ((old: SortingState) => SortingState)) => {
+      const newSorting =
+        typeof updater === 'function' ? updater(sorting) : updater
+      if (newSorting.length === 0) {
+        updateSearch({ sort: '' })
+      } else {
+        const { id, desc } = newSorting[0]
+        updateSearch({ sort: `${id},${desc ? 'desc' : 'asc'}` })
+      }
+    },
+    [sorting, updateSearch],
+  )
 
-  const columns = useMemo<Array<ColumnDef<TransactionRecord>>>(
-    () => [
-      {
-        id: 'select',
-        enableSorting: false,
-        size: 36,
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllRowsSelected() ||
-              (table.getIsSomeRowsSelected() && 'indeterminate')
-            }
-            onCheckedChange={(checked) =>
-              table.toggleAllRowsSelected(checked === true)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row, table }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onClick={(event) => handleRowCheckboxClick(event, row, table)}
-            aria-label={`Select ${row.original.description}`}
-          />
-        ),
-      },
-      ...dataColumns,
-    ],
-    [],
+  const pagination: PaginationState = useMemo(
+    () => ({
+      pageIndex: page || 0,
+      pageSize: PAGE_SIZE,
+    }),
+    [page],
+  )
+
+  const setPagination = useCallback(
+    (
+      updater: PaginationState | ((old: PaginationState) => PaginationState),
+    ) => {
+      const newPagination =
+        typeof updater === 'function' ? updater(pagination) : updater
+      updateSearch({ page: newPagination.pageIndex })
+    },
+    [pagination, updateSearch],
   )
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
+    const from = dateFrom ? dayjs(dateFrom) : null
+    const to = dateTo ? dayjs(dateTo).endOf('day') : null
     return rows.filter((row) => {
       if (term && !row.description.toLowerCase().includes(term)) return false
       if (statusFilter !== 'all' && row.status !== statusFilter) return false
+      if (from && row.date.isBefore(from)) return false
+      if (to && row.date.isAfter(to)) return false
       return true
     })
-  }, [rows, search, statusFilter])
+  }, [rows, search, statusFilter, dateFrom, dateTo])
 
-  const table = useReactTable({
+  const table = useTable({
     data: filteredRows,
     columns,
+    features,
     getRowId: (row) => String(row.id),
-    state: { sorting, rowSelection },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
-    onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
     enableRowSelection: true,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: PAGE_SIZE } },
     autoResetPageIndex: false,
   })
 
@@ -301,11 +331,10 @@ function TransactionTable2({ rows }: Props) {
 
   const selectedTransactions = useMemo(
     () =>
-      Object.entries(rowSelection)
-        .filter(([, selected]) => selected)
-        .map(([id]) => filteredRows.find((row) => String(row.id) === id))
+      Object.keys(table.state.rowSelection)
+        .map((id) => filteredRows.find((row) => row.id === Number(id)))
         .filter((row): row is TransactionRecord => row !== undefined),
-    [rowSelection, filteredRows],
+    [table.state.rowSelection, filteredRows],
   )
 
   const allSelectedAssigned =
@@ -313,28 +342,36 @@ function TransactionTable2({ rows }: Props) {
     selectedTransactions.every((tx) => tx.status === 'assigned')
 
   const excludedSelected = useMemo(
-    () =>
-      selectedTransactions.filter((tx) => tx.status === 'non-reimbursable'),
+    () => selectedTransactions.filter((tx) => tx.status === 'non-reimbursable'),
     [selectedTransactions],
   )
 
   async function applyTransition(transition: TagTransition) {
     await runBatchAsync({ transactions: selectedTransactions, transition })
-    setRowSelection({})
+    table.resetRowSelection()
   }
 
   async function markExcludedReimbursable() {
     // Target only the non-reimbursable rows: mark-todo on an assigned row
     // would strip its reimbursed:* tag (an implicit unassign).
-    await runBatchAsync({
-      transactions: excludedSelected,
-      transition: { type: 'mark-todo' },
-    })
-    setRowSelection((prev) => {
-      const next = { ...prev }
-      for (const tx of excludedSelected) delete next[String(tx.id)]
-      return next
-    })
+    try {
+      await runBatchAsync({
+        transactions: excludedSelected,
+        transition: { type: 'mark-todo' },
+      })
+    } catch (error) {
+      console.error(error)
+    }
+
+    const excludedIds = new Set(excludedSelected.map((x) => x.id))
+    table.setRowSelection(
+      Object.fromEntries(
+        Object.keys(table.state.rowSelection)
+          .map(Number)
+          .filter((id) => !excludedIds.has(id))
+          .map((id) => [id, true]),
+      ),
+    )
   }
 
   return (
@@ -343,14 +380,14 @@ function TransactionTable2({ rows }: Props) {
         <Input
           placeholder="Search description…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => updateSearch({ q: e.target.value })}
           className="max-w-56 h-8 text-sm"
         />
         <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5">
           {STATUS_FILTERS.map((filter) => (
             <button
               key={filter.value}
-              onClick={() => setStatusFilter(filter.value)}
+              onClick={() => updateSearch({ status: filter.value })}
               className={cn(
                 'px-2 py-1 text-xs rounded transition-colors',
                 statusFilter === filter.value
@@ -362,10 +399,25 @@ function TransactionTable2({ rows }: Props) {
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-1 text-xs">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => updateSearch({ from: e.target.value })}
+            className="h-8 px-2 text-sm border border-border rounded-md bg-transparent"
+          />
+          <span className="text-muted-foreground">–</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => updateSearch({ to: e.target.value })}
+            className="h-8 px-2 text-sm border border-border rounded-md bg-transparent"
+          />
+        </div>
         <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
           <span>
             {table.getRowModel().rows.length > 0
-              ? `${table.getState().pagination.pageIndex * PAGE_SIZE + 1}-${Math.min((table.getState().pagination.pageIndex + 1) * PAGE_SIZE, table.getFilteredRowModel().rows.length)} of ${table.getFilteredRowModel().rows.length}`
+              ? `${table.state.pagination.pageIndex * PAGE_SIZE + 1}-${Math.min((table.state.pagination.pageIndex + 1) * PAGE_SIZE, table.getFilteredRowModel().rows.length)} of ${table.getFilteredRowModel().rows.length}`
               : '0 results'}
           </span>
           <Button
@@ -433,7 +485,10 @@ function TransactionTable2({ rows }: Props) {
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="py-2.5">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -463,7 +518,9 @@ function TransactionTable2({ rows }: Props) {
           <Button
             size="sm"
             disabled={isPending}
-            onClick={() => setDialogMode(allSelectedAssigned ? 'move' : 'assign')}
+            onClick={() =>
+              setDialogMode(allSelectedAssigned ? 'move' : 'assign')
+            }
           >
             {allSelectedAssigned ? 'Move to…' : 'New reimbursement…'}
           </Button>
@@ -499,7 +556,6 @@ function TransactionTable2({ rows }: Props) {
             variant="ghost"
             size="sm"
             onClick={() => {
-              setRowSelection({})
               table.resetRowSelection()
             }}
           >
@@ -515,7 +571,9 @@ function TransactionTable2({ rows }: Props) {
           count={selectedTransactions.length}
           existingGroups={existingGroups}
           onOpenChange={(open) => !open && setDialogMode(null)}
-          onSubmit={(groupName) => applyTransition({ type: 'assign', groupName })}
+          onSubmit={(groupName) =>
+            applyTransition({ type: 'assign', groupName })
+          }
         />
       )}
     </div>

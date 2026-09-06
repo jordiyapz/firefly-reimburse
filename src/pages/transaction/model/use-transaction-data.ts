@@ -3,7 +3,10 @@ import { useMemo } from 'react'
 import { getTransactionByAccountIdOptions } from '../api/query'
 import { appendStatusField } from '../lib/transaction'
 
-export function useTransactionData(accountId: number | null, token: string | null) {
+export function useTransactionData(
+  accountId: number | null,
+  token: string | null,
+) {
   const transactionQuery = useQuery(
     getTransactionByAccountIdOptions({
       id: accountId,
