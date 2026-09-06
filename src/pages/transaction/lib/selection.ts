@@ -1,3 +1,5 @@
+import type { RowSelectionState } from '@tanstack/react-table'
+
 /**
  * Build a row-selection patch for shift+click range selection.
  * Returns ids from anchorId..clickedId mapped to targetState, or null when
@@ -8,7 +10,7 @@ export function buildSelectionPatch(
   anchorId: string,
   clickedId: string,
   targetState: boolean,
-): Record<string, boolean> | null {
+): RowSelectionState | null {
   const anchorIndex = rowIds.indexOf(anchorId)
   const clickedIndex = rowIds.indexOf(clickedId)
   if (anchorIndex === -1 || clickedIndex === -1) return null
@@ -16,9 +18,11 @@ export function buildSelectionPatch(
   const from = Math.min(anchorIndex, clickedIndex)
   const to = Math.max(anchorIndex, clickedIndex)
 
-  const patch: Record<string, boolean> = {}
+  const patch: RowSelectionState = {}
   for (let index = from; index <= to; index++) {
-    patch[rowIds[index]] = targetState
+    if (targetState) {
+      patch[rowIds[index]] = true
+    }
   }
   return patch
 }

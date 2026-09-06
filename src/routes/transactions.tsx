@@ -9,6 +9,8 @@ const transactionSearchSchema = z.object({
   status: z.enum(['all', 'todo', 'assigned', 'non-reimbursable']).default('all'),
   from: z.string().default(dayjs().subtract(3, 'month').format('YYYY-MM-DD')),
   to: z.string().default(dayjs().format('YYYY-MM-DD')),
+  sort: z.string().default('date,desc'),
+  page: z.number().int().min(0).default(0),
 })
 
 export type TransactionSearch = z.infer<typeof transactionSearchSchema>

@@ -1,10 +1,17 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
+  columnOrderingFeature,
+  columnSizingFeature,
+  columnVisibilityFeature,
+  createPaginatedRowModel,
+  createSortedRowModel,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  tableFeatures,
+  useTable,
 } from '@tanstack/react-table'
 import dayjs from 'dayjs'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
@@ -21,7 +28,9 @@ import { useBatchUpdateTags } from '../model/use-batch-update-tags'
 import type { TransactionSearch } from '@/routes/transactions'
 import type {
   ColumnDef,
+  PaginationState,
   Row,
+  RowSelectionState,
   SortingState,
   Table as TanstackTable,
 } from '@tanstack/react-table'
@@ -49,6 +58,18 @@ dayjs.extend(LocalizedFormat)
 
 const PAGE_SIZE = 50
 
+const features = tableFeatures({
+  rowSortingFeature,
+  rowSelectionFeature,
+  rowPaginationFeature,
+  columnSizingFeature,
+  columnOrderingFeature,
+  columnVisibilityFeature,
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  sortFns: { alphanumeric: sortFn_alphanumeric },
+})
+
 type StatusFilter = 'all' | 'todo' | 'assigned' | 'non-reimbursable'
 
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
@@ -58,7 +79,7 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'non-reimbursable', label: 'Excluded' },
 ]
 
-const dataColumns: Array<ColumnDef<TransactionRecord>> = [
+const dataColumns: Array<ColumnDef<typeof features, TransactionRecord>> = [
   {
     id: 'date',
     accessorKey: 'date',
@@ -204,15 +225,12 @@ const dataColumns: Array<ColumnDef<TransactionRecord>> = [
 type Props = { rows: Array<TransactionRecord> }
 
 function TransactionTable2({ rows }: Props) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'date', desc: true },
-  ])
-  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [dialogMode, setDialogMode] = useState<'assign' | 'move' | null>(null)
   const lastSelectedIdRef = useRef<string | null>(null)
   const { runBatchAsync, isPending, progress } = useBatchUpdateTags()
   const navigate = useNavigate({ from: '/transactions' })
-  const { q: search, status: statusFilter, from: dateFrom, to: dateTo } = useSearch({ from: '/transactions' })
+  const { q: search, status: statusFilter, from: dateFrom, to: dateTo, sort, page } = useSearch({ from: '/transactions' })
 
   const updateSearch = useCallback(
     (patch: Partial<TransactionSearch>) => {
@@ -221,10 +239,43 @@ function TransactionTable2({ rows }: Props) {
     [navigate],
   )
 
+  // Parse sort string "field,desc" into SortingState
+  const sorting: SortingState = useMemo(() => {
+    if (!sort) return [{ id: 'date', desc: true }]
+    const [id, direction] = sort.split(',')
+    return [{ id: id || 'date', desc: direction !== 'asc' }]
+  }, [sort])
+
+  const setSorting = useCallback(
+    (updater: SortingState | ((old: SortingState) => SortingState)) => {
+      const newSorting = typeof updater === 'function' ? updater(sorting) : updater
+      if (newSorting.length === 0) {
+        updateSearch({ sort: '' })
+      } else {
+        const { id, desc } = newSorting[0]
+        updateSearch({ sort: `${id},${desc ? 'desc' : 'asc'}` })
+      }
+    },
+    [sorting, updateSearch],
+  )
+
+  const pagination: PaginationState = useMemo(() => ({
+    pageIndex: page || 0,
+    pageSize: PAGE_SIZE,
+  }), [page])
+
+  const setPagination = useCallback(
+    (updater: PaginationState | ((old: PaginationState) => PaginationState)) => {
+      const newPagination = typeof updater === 'function' ? updater(pagination) : updater
+      updateSearch({ page: newPagination.pageIndex })
+    },
+    [pagination, updateSearch],
+  )
+
   function handleRowCheckboxClick(
     event: React.MouseEvent<HTMLButtonElement>,
-    row: Row<TransactionRecord>,
-    table: TanstackTable<TransactionRecord>,
+    row: Row<typeof features, TransactionRecord>,
+    table: TanstackTable<typeof features, TransactionRecord>,
   ) {
     const anchorId = lastSelectedIdRef.current
     lastSelectedIdRef.current = row.id
@@ -251,7 +302,7 @@ function TransactionTable2({ rows }: Props) {
     setRowSelection((prev) => ({ ...prev, ...patch }))
   }
 
-  const columns = useMemo<Array<ColumnDef<TransactionRecord>>>(
+  const columns = useMemo<Array<ColumnDef<typeof features, TransactionRecord>>>(
     () => [
       {
         id: 'select',
@@ -295,18 +346,16 @@ function TransactionTable2({ rows }: Props) {
     })
   }, [rows, search, statusFilter, dateFrom, dateTo])
 
-  const table = useReactTable({
+  const table = useTable({
     data: filteredRows,
     columns,
+    features,
     getRowId: (row) => String(row.id),
-    state: { sorting, rowSelection },
+    state: { sorting, rowSelection, pagination },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
     enableRowSelection: true,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: PAGE_SIZE } },
     autoResetPageIndex: false,
   })
 
@@ -314,8 +363,7 @@ function TransactionTable2({ rows }: Props) {
 
   const selectedTransactions = useMemo(
     () =>
-      Object.entries(rowSelection)
-        .filter(([, selected]) => selected)
+      Object.keys(rowSelection)
         .map(([id]) => filteredRows.find((row) => String(row.id) === id))
         .filter((row): row is TransactionRecord => row !== undefined),
     [rowSelection, filteredRows],
@@ -393,7 +441,7 @@ function TransactionTable2({ rows }: Props) {
         <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
           <span>
             {table.getRowModel().rows.length > 0
-              ? `${table.getState().pagination.pageIndex * PAGE_SIZE + 1}-${Math.min((table.getState().pagination.pageIndex + 1) * PAGE_SIZE, table.getFilteredRowModel().rows.length)} of ${table.getFilteredRowModel().rows.length}`
+              ? `${table.state.pagination.pageIndex * PAGE_SIZE + 1}-${Math.min((table.state.pagination.pageIndex + 1) * PAGE_SIZE, table.getFilteredRowModel().rows.length)} of ${table.getFilteredRowModel().rows.length}`
               : '0 results'}
           </span>
           <Button
